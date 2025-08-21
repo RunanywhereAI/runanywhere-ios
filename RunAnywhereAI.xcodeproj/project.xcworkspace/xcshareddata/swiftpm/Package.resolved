@@ -1,5 +1,5 @@
 {
-  "originHash" : "a80395652483e85d23a670b7b80276e1db9464a4e3de1ca6dff48d47a354b3eb",
+  "originHash" : "a5d5b05776d3737f07dc34fd0301ce80740397115b27d37c856d0acb88661168",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -62,15 +62,6 @@
       "state" : {
         "revision" : "bb238dd96fbe4c18014f3107c00edd6edb15428e",
         "version" : "1.2.4"
-      }
-    },
-    {
-      "identity" : "llm.swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/eastriverlee/LLM.swift/",
-      "state" : {
-        "branch" : "main",
-        "revision" : "4c4e909ac4758c628c9cd263a0c25b6edff5526d"
       }
     },
     {

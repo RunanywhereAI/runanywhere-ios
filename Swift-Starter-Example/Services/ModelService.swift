@@ -11,15 +11,82 @@ import RunAnywhere
 import LlamaCPPRuntime
 import ONNXRuntime
 
+// MARK: - STT Model Variants
+enum STTModelVariant: String, CaseIterable, Identifiable {
+    case whisperTiny = "sherpa-onnx-whisper-tiny.en"
+    case whisperBase = "sherpa-onnx-whisper-base.en"
+    case whisperSmall = "sherpa-onnx-whisper-small.en"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .whisperTiny: return "Whisper Tiny"
+        case .whisperBase: return "Whisper Base"
+        case .whisperSmall: return "Whisper Small"
+        }
+    }
+
+    var registrationName: String {
+        switch self {
+        case .whisperTiny: return "Sherpa Whisper Tiny (ONNX)"
+        case .whisperBase: return "Sherpa Whisper Base (ONNX)"
+        case .whisperSmall: return "Sherpa Whisper Small (ONNX)"
+        }
+    }
+
+    var url: URL {
+        switch self {
+        case .whisperTiny:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-tiny.en.tar.gz")!
+        case .whisperBase:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-base.en.tar.gz")!
+        case .whisperSmall:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-small.en.tar.gz")!
+        }
+    }
+
+    var memoryRequirement: Int64 {
+        switch self {
+        case .whisperTiny: return 75_000_000
+        case .whisperBase: return 290_000_000
+        case .whisperSmall: return 760_000_000
+        }
+    }
+
+    var sizeLabel: String {
+        switch self {
+        case .whisperTiny: return "~75 MB"
+        case .whisperBase: return "~253 MB"
+        case .whisperSmall: return "~759 MB"
+        }
+    }
+
+    var qualityLabel: String {
+        switch self {
+        case .whisperTiny: return "Fastest, basic accuracy"
+        case .whisperBase: return "Balanced speed & accuracy"
+        case .whisperSmall: return "Best accuracy, slower"
+        }
+    }
+}
+
 /// Service for managing AI models - handles downloading, loading, and state tracking
 @MainActor
 final class ModelService: ObservableObject {
     // MARK: - Model IDs (must match registered model IDs)
     static let llmModelId = "lfm2-350m-q4_k_m"
-    static let sttModelId = "sherpa-onnx-whisper-tiny.en"
     static let ttsModelId = "vits-piper-en_US-lessac-medium"
     static let vlmModelId = "smolvlm-256m-instruct"
     static let diffusionModelId = "sd15-coreml-palettized"
+
+    /// Currently selected STT model variant, persisted across launches
+    @Published var selectedSTTVariant: STTModelVariant {
+        didSet { UserDefaults.standard.set(selectedSTTVariant.rawValue, forKey: "selectedSTTVariant") }
+    }
+
+    /// Computed model ID for the active STT variant
+    var sttModelId: String { selectedSTTVariant.rawValue }
     
     // MARK: - Download State
     @Published var isLLMDownloading = false
@@ -66,6 +133,12 @@ final class ModelService: ObservableObject {
     
     // MARK: - Initialization
     init() {
+        if let raw = UserDefaults.standard.string(forKey: "selectedSTTVariant"),
+           let variant = STTModelVariant(rawValue: raw) {
+            self.selectedSTTVariant = variant
+        } else {
+            self.selectedSTTVariant = .whisperTiny
+        }
         Task {
             await refreshLoadedStates()
         }
@@ -85,16 +158,16 @@ final class ModelService: ObservableObject {
             )
         }
         
-        // Register STT model - Whisper Tiny (fast, accurate for English)
-        if let whisperURL = URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-tiny.en.tar.gz") {
+        // Register all STT model variants (Whisper Tiny / Base / Small)
+        for variant in STTModelVariant.allCases {
             RunAnywhere.registerModel(
-                id: sttModelId,
-                name: "Sherpa Whisper Tiny (ONNX)",
-                url: whisperURL,
+                id: variant.rawValue,
+                name: variant.registrationName,
+                url: variant.url,
                 framework: .onnx,
                 modality: .speechRecognition,
                 artifactType: .archive(.tarGz, structure: .nestedDirectory),
-                memoryRequirement: 75_000_000
+                memoryRequirement: variant.memoryRequirement
             )
         }
         
@@ -140,7 +213,7 @@ final class ModelService: ObservableObject {
             )
         }
         
-        print("✅ Models registered: LLM, STT, TTS, VLM, Diffusion")
+        print("✅ Models registered: LLM, STT (\(STTModelVariant.allCases.count) variants), TTS, VLM, Diffusion")
     }
     
     // MARK: - State Refresh
@@ -204,29 +277,31 @@ final class ModelService: ObservableObject {
     }
     
     // MARK: - STT Operations
-    /// Download and load STT model
+    /// Download and load the currently selected STT model variant
     func downloadAndLoadSTT() async {
         guard !isSTTDownloading && !isSTTLoading else { return }
-        
+
+        let modelId = sttModelId
+
         // Try to load first if already downloaded
         isSTTLoading = true
         do {
-            try await RunAnywhere.loadSTTModel(Self.sttModelId)
+            try await RunAnywhere.loadSTTModel(modelId)
             isSTTLoaded = true
             isSTTLoading = false
-            print("✅ STT model loaded from cache")
+            print("✅ STT model loaded from cache (\(selectedSTTVariant.displayName))")
             return
         } catch {
             print("STT load attempt failed (will download): \(error)")
             isSTTLoading = false
         }
-        
+
         // If loading failed, download the model
         isSTTDownloading = true
         sttDownloadProgress = 0.0
-        
+
         do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.sttModelId)
+            let progressStream = try await RunAnywhere.downloadModel(modelId)
             for await progress in progressStream {
                 sttDownloadProgress = progress.overallProgress
                 if progress.stage == .completed {
@@ -238,20 +313,43 @@ final class ModelService: ObservableObject {
             isSTTDownloading = false
             return
         }
-        
+
         isSTTDownloading = false
-        
+
         // Load the model after download
         isSTTLoading = true
-        
+
         do {
-            try await RunAnywhere.loadSTTModel(Self.sttModelId)
+            try await RunAnywhere.loadSTTModel(modelId)
             isSTTLoaded = true
         } catch {
             print("STT load error: \(error)")
         }
-        
+
         isSTTLoading = false
+    }
+
+    /// Switch to a different STT model variant, unloading the current one if needed
+    func selectSTTVariant(_ variant: STTModelVariant) async {
+        guard variant != selectedSTTVariant else { return }
+
+        if isSTTLoaded {
+            do { try await RunAnywhere.unloadSTTModel() } catch {
+                print("STT unload error during variant switch: \(error)")
+            }
+            isSTTLoaded = false
+        }
+
+        selectedSTTVariant = variant
+    }
+
+    /// Unload the current STT model (returns to model selection)
+    func unloadSTTModel() async {
+        guard isSTTLoaded else { return }
+        do { try await RunAnywhere.unloadSTTModel() } catch {
+            print("STT unload error: \(error)")
+        }
+        isSTTLoaded = false
     }
     
     // MARK: - TTS Operations

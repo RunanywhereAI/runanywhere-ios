@@ -233,7 +233,7 @@ struct HomeView: View {
             modelInfoRow(icon: "cpu", title: "LLM", value: "LFM2 350M Q4")
             modelInfoRow(icon: "eye", title: "VLM", value: "SmolVLM 256M")
             modelInfoRow(icon: "paintbrush", title: "Diffusion", value: "SD 1.5 CoreML")
-            modelInfoRow(icon: "ear", title: "STT", value: "Whisper Tiny")
+            modelInfoRow(icon: "ear", title: "STT", value: modelService.selectedSTTVariant.displayName)
             modelInfoRow(icon: "waveform", title: "TTS", value: "Piper US")
         }
         .padding(20)

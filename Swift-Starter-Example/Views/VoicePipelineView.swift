@@ -185,7 +185,7 @@ struct VoicePipelineView: View {
                     modelCard(
                         icon: "mic.fill",
                         title: "STT",
-                        subtitle: "Whisper Tiny",
+                        subtitle: modelService.selectedSTTVariant.displayName,
                         isLoaded: modelService.isSTTLoaded,
                         isLoading: modelService.isSTTLoading || modelService.isSTTDownloading,
                         progress: modelService.sttDownloadProgress,

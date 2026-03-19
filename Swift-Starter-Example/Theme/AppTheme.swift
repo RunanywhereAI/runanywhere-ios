@@ -186,3 +186,17 @@ struct PrimaryButtonStyle: ButtonStyle {
             .shadow(color: AppColors.accentCyan.opacity(0.3), radius: 12, y: 4)
     }
 }
+
+// MARK: - Thinking Tag Stripping
+
+extension String {
+    /// Strips `<think>…</think>` blocks (and any unclosed `<think>` tail) from model output.
+    static func stripThinkingTags(_ text: String) -> String {
+        var result = text
+            .replacingOccurrences(of: "<think>[\\s\\S]*?</think>", with: "", options: .regularExpression)
+        if let range = result.range(of: "<think>[\\s\\S]*", options: .regularExpression) {
+            result.removeSubrange(range)
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}

@@ -626,8 +626,15 @@ struct VoicePipelineView: View {
                 }
                 
                 if !transcript.isEmpty {
-                    // Generate response
-                    let response = try await RunAnywhere.chat(transcript)
+                    let genResult = try await RunAnywhere.generate(
+                        transcript,
+                        options: LLMGenerationOptions(
+                            maxTokens: 200,
+                            temperature: 0.7,
+                            systemPrompt: "You are a helpful voice assistant. Respond concisely in 1-2 sentences."
+                        )
+                    )
+                    let response = String.stripThinkingTags(genResult.text)
                     
                     await MainActor.run {
                         lastResponse = response
@@ -635,7 +642,6 @@ struct VoicePipelineView: View {
                         currentState = .speaking
                     }
                     
-                    // Speak the response - SDK handles PCM→WAV conversion and audio playback
                     _ = try await RunAnywhere.speak(response)
                     
                     await MainActor.run {

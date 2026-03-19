@@ -364,8 +364,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RunanywhereAI/runanywhere-sdks";
 			requirement = {
-				kind = exactVersion;
-				version = 0.19.1;
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.19.6;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

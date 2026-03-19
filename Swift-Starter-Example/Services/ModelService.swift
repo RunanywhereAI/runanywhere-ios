@@ -11,15 +11,169 @@ import RunAnywhere
 import LlamaCPPRuntime
 import ONNXRuntime
 
+// MARK: - LLM Model Variants
+enum LLMModelVariant: String, CaseIterable, Identifiable {
+    case lfm2_350m = "lfm2-350m-q4_k_m"
+    case qwen3_06b = "qwen3-0.6b-q4_k_m"
+    case qwen35_08b = "qwen3.5-0.8b-q4_k_m"
+    case qwen35_2b = "qwen3.5-2b-q4_k_m"
+    case qwen3_17b = "qwen3-1.7b-q4_k_m"
+    case qwen35_4b = "qwen3.5-4b-q4_k_m"
+    case qwen3_4b = "qwen3-4b-q4_k_m"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .lfm2_350m: return "LFM2 350M"
+        case .qwen3_06b: return "Qwen3 0.6B"
+        case .qwen35_08b: return "Qwen3.5 0.8B"
+        case .qwen35_2b: return "Qwen3.5 2B"
+        case .qwen3_17b: return "Qwen3 1.7B"
+        case .qwen35_4b: return "Qwen3.5 4B"
+        case .qwen3_4b: return "Qwen3 4B"
+        }
+    }
+
+    var url: URL {
+        switch self {
+        case .lfm2_350m:
+            return URL(string: "https://huggingface.co/LiquidAI/LFM2-350M-GGUF/resolve/main/LFM2-350M-Q4_K_M.gguf")!
+        case .qwen3_06b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf")!
+        case .qwen35_08b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf")!
+        case .qwen35_2b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf")!
+        case .qwen3_17b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf")!
+        case .qwen35_4b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf")!
+        case .qwen3_4b:
+            return URL(string: "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf")!
+        }
+    }
+
+    var memoryRequirement: Int64 {
+        switch self {
+        case .lfm2_350m: return 250_000_000
+        case .qwen3_06b: return 500_000_000
+        case .qwen35_08b: return 600_000_000
+        case .qwen35_2b: return 1_500_000_000
+        case .qwen3_17b: return 1_200_000_000
+        case .qwen35_4b: return 2_800_000_000
+        case .qwen3_4b: return 2_500_000_000
+        }
+    }
+
+    var sizeLabel: String {
+        switch self {
+        case .lfm2_350m: return "~250 MB"
+        case .qwen3_06b: return "~460 MB"
+        case .qwen35_08b: return "~550 MB"
+        case .qwen35_2b: return "~1.4 GB"
+        case .qwen3_17b: return "~1.1 GB"
+        case .qwen35_4b: return "~2.7 GB"
+        case .qwen3_4b: return "~2.5 GB"
+        }
+    }
+
+    var qualityLabel: String {
+        switch self {
+        case .lfm2_350m: return "Tiny, fastest inference"
+        case .qwen3_06b: return "Small, fast, 32K context"
+        case .qwen35_08b: return "Small, improved reasoning"
+        case .qwen35_2b: return "Medium, strong quality"
+        case .qwen3_17b: return "Medium, good balance"
+        case .qwen35_4b: return "Large, best Qwen3.5 quality"
+        case .qwen3_4b: return "Large, best Qwen3 quality"
+        }
+    }
+}
+
+// MARK: - STT Model Variants
+enum STTModelVariant: String, CaseIterable, Identifiable {
+    case whisperTiny = "sherpa-onnx-whisper-tiny.en"
+    case whisperBase = "sherpa-onnx-whisper-base.en"
+    case whisperSmall = "sherpa-onnx-whisper-small.en"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .whisperTiny: return "Whisper Tiny"
+        case .whisperBase: return "Whisper Base"
+        case .whisperSmall: return "Whisper Small"
+        }
+    }
+
+    var registrationName: String {
+        switch self {
+        case .whisperTiny: return "Sherpa Whisper Tiny (ONNX)"
+        case .whisperBase: return "Sherpa Whisper Base (ONNX)"
+        case .whisperSmall: return "Sherpa Whisper Small (ONNX)"
+        }
+    }
+
+    var url: URL {
+        switch self {
+        case .whisperTiny:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-tiny.en.tar.gz")!
+        case .whisperBase:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-base.en.tar.gz")!
+        case .whisperSmall:
+            return URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-small.en.tar.gz")!
+        }
+    }
+
+    var memoryRequirement: Int64 {
+        switch self {
+        case .whisperTiny: return 75_000_000
+        case .whisperBase: return 290_000_000
+        case .whisperSmall: return 760_000_000
+        }
+    }
+
+    var sizeLabel: String {
+        switch self {
+        case .whisperTiny: return "~75 MB"
+        case .whisperBase: return "~253 MB"
+        case .whisperSmall: return "~759 MB"
+        }
+    }
+
+    var qualityLabel: String {
+        switch self {
+        case .whisperTiny: return "Fastest, basic accuracy"
+        case .whisperBase: return "Balanced speed & accuracy"
+        case .whisperSmall: return "Best accuracy, slower"
+        }
+    }
+}
+
 /// Service for managing AI models - handles downloading, loading, and state tracking
 @MainActor
 final class ModelService: ObservableObject {
     // MARK: - Model IDs (must match registered model IDs)
-    static let llmModelId = "lfm2-350m-q4_k_m"
-    static let sttModelId = "sherpa-onnx-whisper-tiny.en"
     static let ttsModelId = "vits-piper-en_US-lessac-medium"
     static let vlmModelId = "smolvlm-256m-instruct"
     static let diffusionModelId = "sd15-coreml-palettized"
+
+    /// Currently selected LLM model variant, persisted across launches
+    @Published var selectedLLMVariant: LLMModelVariant {
+        didSet { UserDefaults.standard.set(selectedLLMVariant.rawValue, forKey: "selectedLLMVariant") }
+    }
+
+    /// Computed model ID for the active LLM variant
+    var llmModelId: String { selectedLLMVariant.rawValue }
+
+    /// Currently selected STT model variant, persisted across launches
+    @Published var selectedSTTVariant: STTModelVariant {
+        didSet { UserDefaults.standard.set(selectedSTTVariant.rawValue, forKey: "selectedSTTVariant") }
+    }
+
+    /// Computed model ID for the active STT variant
+    var sttModelId: String { selectedSTTVariant.rawValue }
     
     // MARK: - Download State
     @Published var isLLMDownloading = false
@@ -66,6 +220,19 @@ final class ModelService: ObservableObject {
     
     // MARK: - Initialization
     init() {
+        if let raw = UserDefaults.standard.string(forKey: "selectedLLMVariant"),
+           let variant = LLMModelVariant(rawValue: raw) {
+            self.selectedLLMVariant = variant
+        } else {
+            self.selectedLLMVariant = .qwen35_08b
+        }
+
+        if let raw = UserDefaults.standard.string(forKey: "selectedSTTVariant"),
+           let variant = STTModelVariant(rawValue: raw) {
+            self.selectedSTTVariant = variant
+        } else {
+            self.selectedSTTVariant = .whisperTiny
+        }
         Task {
             await refreshLoadedStates()
         }
@@ -74,27 +241,27 @@ final class ModelService: ObservableObject {
     // MARK: - Model Registration
     /// Register default models with the SDK
     static func registerDefaultModels() {
-        // Register LLM model - LiquidAI LFM2 350M Q4 (small, fast, efficient)
-        if let lfm2URL = URL(string: "https://huggingface.co/LiquidAI/LFM2-350M-GGUF/resolve/main/LFM2-350M-Q4_K_M.gguf") {
+        // Register all LLM model variants (LFM2 + Qwen 3 + Qwen 3.5)
+        for variant in LLMModelVariant.allCases {
             RunAnywhere.registerModel(
-                id: llmModelId,
-                name: "LiquidAI LFM2 350M Q4_K_M",
-                url: lfm2URL,
+                id: variant.rawValue,
+                name: variant.displayName,
+                url: variant.url,
                 framework: .llamaCpp,
-                memoryRequirement: 250_000_000
+                memoryRequirement: variant.memoryRequirement
             )
         }
         
-        // Register STT model - Whisper Tiny (fast, accurate for English)
-        if let whisperURL = URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/sherpa-onnx-whisper-tiny.en.tar.gz") {
+        // Register all STT model variants (Whisper Tiny / Base / Small)
+        for variant in STTModelVariant.allCases {
             RunAnywhere.registerModel(
-                id: sttModelId,
-                name: "Sherpa Whisper Tiny (ONNX)",
-                url: whisperURL,
+                id: variant.rawValue,
+                name: variant.registrationName,
+                url: variant.url,
                 framework: .onnx,
                 modality: .speechRecognition,
                 artifactType: .archive(.tarGz, structure: .nestedDirectory),
-                memoryRequirement: 75_000_000
+                memoryRequirement: variant.memoryRequirement
             )
         }
         
@@ -140,7 +307,7 @@ final class ModelService: ObservableObject {
             )
         }
         
-        print("✅ Models registered: LLM, STT, TTS, VLM, Diffusion")
+        print("✅ Models registered: LLM (\(LLMModelVariant.allCases.count) variants), STT (\(STTModelVariant.allCases.count) variants), TTS, VLM, Diffusion")
     }
     
     // MARK: - State Refresh
@@ -153,29 +320,29 @@ final class ModelService: ObservableObject {
     }
     
     // MARK: - LLM Operations
-    /// Download and load LLM model
+    /// Download and load the currently selected LLM model variant
     func downloadAndLoadLLM() async {
         guard !isLLMDownloading && !isLLMLoading else { return }
-        
-        // Try to load first if already downloaded
+
+        let modelId = llmModelId
+
         isLLMLoading = true
         do {
-            try await RunAnywhere.loadModel(Self.llmModelId)
+            try await RunAnywhere.loadModel(modelId)
             isLLMLoaded = true
             isLLMLoading = false
-            print("✅ LLM model loaded from cache")
+            print("✅ LLM model loaded from cache (\(selectedLLMVariant.displayName))")
             return
         } catch {
             print("LLM load attempt failed (will download): \(error)")
             isLLMLoading = false
         }
-        
-        // If loading failed, download the model
+
         isLLMDownloading = true
         llmDownloadProgress = 0.0
-        
+
         do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.llmModelId)
+            let progressStream = try await RunAnywhere.downloadModel(modelId)
             for await progress in progressStream {
                 llmDownloadProgress = progress.overallProgress
                 if progress.stage == .completed {
@@ -187,46 +354,60 @@ final class ModelService: ObservableObject {
             isLLMDownloading = false
             return
         }
-        
+
         isLLMDownloading = false
-        
-        // Load the model after download
         isLLMLoading = true
-        
+
         do {
-            try await RunAnywhere.loadModel(Self.llmModelId)
+            try await RunAnywhere.loadModel(modelId)
             isLLMLoaded = true
         } catch {
             print("LLM load error: \(error)")
         }
-        
+
         isLLMLoading = false
+    }
+
+    /// Switch to a different LLM model variant, unloading the current one if needed
+    func selectLLMVariant(_ variant: LLMModelVariant) async {
+        guard variant != selectedLLMVariant else { return }
+
+        if isLLMLoaded {
+            do { try await RunAnywhere.unloadModel() } catch {
+                print("LLM unload error during variant switch: \(error)")
+            }
+            isLLMLoaded = false
+        }
+
+        selectedLLMVariant = variant
     }
     
     // MARK: - STT Operations
-    /// Download and load STT model
+    /// Download and load the currently selected STT model variant
     func downloadAndLoadSTT() async {
         guard !isSTTDownloading && !isSTTLoading else { return }
-        
+
+        let modelId = sttModelId
+
         // Try to load first if already downloaded
         isSTTLoading = true
         do {
-            try await RunAnywhere.loadSTTModel(Self.sttModelId)
+            try await RunAnywhere.loadSTTModel(modelId)
             isSTTLoaded = true
             isSTTLoading = false
-            print("✅ STT model loaded from cache")
+            print("✅ STT model loaded from cache (\(selectedSTTVariant.displayName))")
             return
         } catch {
             print("STT load attempt failed (will download): \(error)")
             isSTTLoading = false
         }
-        
+
         // If loading failed, download the model
         isSTTDownloading = true
         sttDownloadProgress = 0.0
-        
+
         do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.sttModelId)
+            let progressStream = try await RunAnywhere.downloadModel(modelId)
             for await progress in progressStream {
                 sttDownloadProgress = progress.overallProgress
                 if progress.stage == .completed {
@@ -238,20 +419,43 @@ final class ModelService: ObservableObject {
             isSTTDownloading = false
             return
         }
-        
+
         isSTTDownloading = false
-        
+
         // Load the model after download
         isSTTLoading = true
-        
+
         do {
-            try await RunAnywhere.loadSTTModel(Self.sttModelId)
+            try await RunAnywhere.loadSTTModel(modelId)
             isSTTLoaded = true
         } catch {
             print("STT load error: \(error)")
         }
-        
+
         isSTTLoading = false
+    }
+
+    /// Switch to a different STT model variant, unloading the current one if needed
+    func selectSTTVariant(_ variant: STTModelVariant) async {
+        guard variant != selectedSTTVariant else { return }
+
+        if isSTTLoaded {
+            do { try await RunAnywhere.unloadSTTModel() } catch {
+                print("STT unload error during variant switch: \(error)")
+            }
+            isSTTLoaded = false
+        }
+
+        selectedSTTVariant = variant
+    }
+
+    /// Unload the current STT model (returns to model selection)
+    func unloadSTTModel() async {
+        guard isSTTLoaded else { return }
+        do { try await RunAnywhere.unloadSTTModel() } catch {
+            print("STT unload error: \(error)")
+        }
+        isSTTLoaded = false
     }
     
     // MARK: - TTS Operations

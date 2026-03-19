@@ -17,6 +17,7 @@ struct ChatView: View {
     @State private var isGenerating = false
     @State private var currentResponse = ""
     @State private var streamingTask: Task<Void, Never>?
+    @State private var showModelPicker = false
     
     @FocusState private var isInputFocused: Bool
     
@@ -27,8 +28,8 @@ struct ChatView: View {
             
             if !modelService.isLLMLoaded {
                 ModelLoaderView(
-                    title: "LLM Model Required",
-                    subtitle: "Download and load the language model to start chatting",
+                    title: modelService.selectedLLMVariant.displayName,
+                    subtitle: "\(modelService.selectedLLMVariant.sizeLabel) · Tap model name above to switch",
                     icon: "bubble.left.and.bubble.right.fill",
                     accentColor: AppColors.accentCyan,
                     isDownloading: modelService.isLLMDownloading,
@@ -56,15 +57,27 @@ struct ChatView: View {
         #endif
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Chat")
-                    .font(AppFonts.titleMedium())
-                    .foregroundStyle(AppColors.textPrimary)
+                Button { showModelPicker = true } label: {
+                    HStack(spacing: 6) {
+                        Text(modelService.selectedLLMVariant.displayName)
+                            .font(AppFonts.bodyMedium())
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppColors.textPrimary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(AppColors.accentCyan)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(AppColors.surfaceCard)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(AppColors.accentCyan.opacity(0.3), lineWidth: 1))
+                }
+                .disabled(isGenerating)
             }
             
             ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
+                Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
                         .foregroundStyle(AppColors.textPrimary)
                 }
@@ -72,14 +85,15 @@ struct ChatView: View {
             
             ToolbarItem(placement: .confirmationAction) {
                 if !messages.isEmpty {
-                    Button {
-                        messages.removeAll()
-                    } label: {
+                    Button { messages.removeAll() } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(AppColors.textPrimary)
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showModelPicker) {
+            modelPickerSheet
         }
         .onDisappear {
             streamingTask?.cancel()
@@ -148,11 +162,11 @@ struct ChatView: View {
                             .id(message.id)
                     }
                     
-                    // Streaming message
                     if isGenerating {
+                        let display = String.stripThinkingTags(currentResponse)
                         ChatMessageBubble(
                             message: ChatMessage(
-                                text: currentResponse.isEmpty ? "..." : currentResponse,
+                                text: display.isEmpty ? "Thinking..." : display,
                                 isUser: false,
                                 timestamp: Date()
                             ),
@@ -261,7 +275,11 @@ struct ChatView: View {
             do {
                 let result = try await RunAnywhere.generateStream(
                     text,
-                    options: LLMGenerationOptions(maxTokens: 256, temperature: 0.8)
+                    options: LLMGenerationOptions(
+                        maxTokens: 256,
+                        temperature: 0.8,
+                        systemPrompt: "You are a helpful assistant. Respond directly and concisely."
+                    )
                 )
                 
                 for try await token in result.stream {
@@ -277,7 +295,7 @@ struct ChatView: View {
                 await MainActor.run {
                     if !Task.isCancelled {
                         let aiMessage = ChatMessage(
-                            text: currentResponse,
+                            text: String.stripThinkingTags(currentResponse),
                             isUser: false,
                             timestamp: Date(),
                             tokensPerSecond: metrics.tokensPerSecond,
@@ -320,6 +338,67 @@ struct ChatView: View {
         isGenerating = false
         currentResponse = ""
     }
+
+    // MARK: - Model Picker Sheet
+    private var modelPickerSheet: some View {
+        NavigationStack {
+            ZStack {
+                AppColors.primaryDark.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(LLMModelVariant.allCases) { variant in
+                            let isSelected = variant == modelService.selectedLLMVariant
+                            Button {
+                                Task {
+                                    await modelService.selectLLMVariant(variant)
+                                    showModelPicker = false
+                                }
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(variant.displayName)
+                                            .font(AppFonts.bodyLarge())
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(AppColors.textPrimary)
+                                        Text("\(variant.sizeLabel) · \(variant.qualityLabel)")
+                                            .font(AppFonts.bodySmall())
+                                            .foregroundStyle(AppColors.textSecondary)
+                                    }
+                                    Spacer()
+                                    if isSelected {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundStyle(AppColors.accentCyan)
+                                    }
+                                }
+                                .padding(14)
+                                .background(isSelected ? AppColors.accentCyan.opacity(0.1) : AppColors.surfaceCard.opacity(0.5))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(isSelected ? AppColors.accentCyan.opacity(0.4) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Choose Model")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showModelPicker = false }
+                        .foregroundStyle(AppColors.accentCyan)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
 }
 
 #Preview {

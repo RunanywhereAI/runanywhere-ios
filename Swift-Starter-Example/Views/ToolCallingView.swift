@@ -326,7 +326,8 @@ struct ToolCallingView: View {
                 maxToolCalls: 3,
                 autoExecute: true,
                 temperature: 0.7,
-                maxTokens: 512
+                maxTokens: 512,
+                systemPrompt: "You are a helpful assistant with access to tools. Use them when appropriate."
             )
             
             let result = try await RunAnywhere.generateWithTools(userPrompt, options: options)
@@ -349,9 +350,9 @@ struct ToolCallingView: View {
                 }
             }
             
-            // Log final response
-            if !result.text.isEmpty {
-                addLog(.response, result.text)
+            let cleanedText = String.stripThinkingTags(result.text)
+            if !cleanedText.isEmpty {
+                addLog(.response, cleanedText)
             }
             
             if result.toolCalls.isEmpty {

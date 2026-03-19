@@ -29,21 +29,28 @@ struct SpeechToTextView: View {
                 .ignoresSafeArea()
             
             if !modelService.isSTTLoaded {
-                ModelLoaderView(
-                    title: "STT Model Required",
-                    subtitle: "Download and load the speech recognition model",
-                    icon: "mic.fill",
-                    accentColor: AppColors.accentViolet,
-                    isDownloading: modelService.isSTTDownloading,
-                    isLoading: modelService.isSTTLoading,
-                    progress: modelService.sttDownloadProgress
-                ) {
-                    Task { await modelService.downloadAndLoadSTT() }
+                ScrollView {
+                    VStack(spacing: 24) {
+                        sttModelPicker
+                        ModelLoaderView(
+                            title: "STT Model Required",
+                            subtitle: "Download \(modelService.selectedSTTVariant.displayName) (\(modelService.selectedSTTVariant.sizeLabel))",
+                            icon: "mic.fill",
+                            accentColor: AppColors.accentViolet,
+                            isDownloading: modelService.isSTTDownloading,
+                            isLoading: modelService.isSTTLoading,
+                            progress: modelService.sttDownloadProgress
+                        ) {
+                            Task { await modelService.downloadAndLoadSTT() }
+                        }
+                    }
+                    .padding(24)
                 }
             } else {
                 VStack(spacing: 0) {
                     ScrollView {
                         VStack(spacing: 24) {
+                            loadedModelIndicator
                             recordingArea
                             
                             if !transcription.isEmpty || isTranscribing {
@@ -97,6 +104,79 @@ struct SpeechToTextView: View {
         }
     }
     
+    // MARK: - STT Model Picker
+    private var sttModelPicker: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Select Whisper Model")
+                .font(AppFonts.titleMedium())
+                .foregroundStyle(AppColors.textPrimary)
+
+            ForEach(STTModelVariant.allCases) { variant in
+                let isSelected = modelService.selectedSTTVariant == variant
+                Button {
+                    Task { await modelService.selectSTTVariant(variant) }
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 22))
+                            .foregroundStyle(isSelected ? AppColors.accentViolet : AppColors.textMuted)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(variant.displayName)
+                                .font(AppFonts.titleMedium())
+                                .foregroundStyle(AppColors.textPrimary)
+
+                            Text("\(variant.qualityLabel) · \(variant.sizeLabel)")
+                                .font(AppFonts.bodySmall())
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(14)
+                    .background(isSelected ? AppColors.accentViolet.opacity(0.1) : AppColors.surfaceCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(isSelected ? AppColors.accentViolet.opacity(0.5) : AppColors.textMuted.opacity(0.1), lineWidth: 1)
+                    )
+                }
+                .disabled(modelService.isSTTDownloading || modelService.isSTTLoading)
+            }
+        }
+    }
+
+    // MARK: - Loaded Model Indicator
+    private var loadedModelIndicator: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(AppColors.success)
+
+            Text(modelService.selectedSTTVariant.displayName)
+                .font(AppFonts.bodySmall())
+                .foregroundStyle(AppColors.textSecondary)
+
+            Spacer()
+
+            Button {
+                Task { await modelService.unloadSTTModel() }
+            } label: {
+                Text("Change Model")
+                    .font(AppFonts.labelSmall())
+                    .foregroundStyle(AppColors.accentViolet)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(AppColors.surfaceCard)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AppColors.success.opacity(0.3), lineWidth: 1)
+        )
+    }
+
     // MARK: - Recording Area
     private var recordingArea: some View {
         VStack(spacing: 24) {

@@ -61,7 +61,7 @@ struct Swift_Starter_ExampleApp: App {
             ONNX.register()
             
             // Register default models - this must happen before model discovery completes
-            ModelService.registerDefaultModels()
+            await ModelService.registerDefaultModels()
             
             print("✅ RunAnywhere SDK initialized successfully")
             print("   Version: \(RunAnywhere.version)")

@@ -619,21 +619,18 @@ struct VoicePipelineView: View {
                 let audioData = try Data(contentsOf: url)
                 
                 // Transcribe
-                let transcript = try await RunAnywhere.transcribe(audioData)
-                
+                let transcript = try await RunAnywhere.transcribe(audio: audioData).text
+
                 await MainActor.run {
                     lastTranscript = transcript.isEmpty ? "(No speech detected)" : transcript
                 }
-                
+
                 if !transcript.isEmpty {
-                    let genResult = try await RunAnywhere.generate(
-                        transcript,
-                        options: LLMGenerationOptions(
-                            maxTokens: 200,
-                            temperature: 0.7,
-                            systemPrompt: "You are a helpful voice assistant. Respond concisely in 1-2 sentences."
-                        )
-                    )
+                    var options = RALLMGenerationOptions.defaults()
+                    options.maxTokens = 200
+                    options.temperature = 0.7
+                    options.systemPrompt = "You are a helpful voice assistant. Respond concisely in 1-2 sentences."
+                    let genResult = try await RunAnywhere.generate(prompt: transcript, options: options)
                     let response = String.stripThinkingTags(genResult.text)
                     
                     await MainActor.run {

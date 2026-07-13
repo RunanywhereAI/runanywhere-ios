@@ -12,6 +12,7 @@ import AppKit
 import SwiftUI
 import RunAnywhere
 import LlamaCPPRuntime
+import MLXRuntime
 import ONNXRuntime
 
 @main
@@ -58,6 +59,7 @@ struct Swift_Starter_ExampleApp: App {
             
             // Register backends BEFORE models
             LlamaCPP.register()
+            MLX.register()
             ONNX.register()
             
             // Register default models - this must happen before model discovery completes

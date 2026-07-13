@@ -443,8 +443,8 @@ struct SpeechToTextView: View {
                 let audioData = try Data(contentsOf: url)
                 
                 if audioData.count > 1600 { // At least 0.1s of audio at 16kHz
-                    let text = try await RunAnywhere.transcribe(audioData)
-                    
+                    let text = try await RunAnywhere.transcribe(audio: audioData).text
+
                     await MainActor.run {
                         transcription = text.isEmpty ? "(No speech detected)" : text
                         if !text.isEmpty {

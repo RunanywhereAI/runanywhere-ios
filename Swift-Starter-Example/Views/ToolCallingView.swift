@@ -254,46 +254,46 @@ struct ToolCallingView: View {
             await RunAnywhere.clearTools()
             
             // 1. Weather tool
-            let weatherTool = ToolDefinition(
+            let weatherTool = RAToolDefinition(
                 name: "get_weather",
                 description: "Gets the current weather for a given city",
                 parameters: [
-                    ToolParameter(name: "city", type: .string, description: "The city name", required: true)
+                    RAToolParameter(name: "city", type: .string, description: "The city name", required: true)
                 ]
             )
             await RunAnywhere.registerTool(weatherTool) { args in
-                let city = args["city"]?.stringValue ?? "Unknown"
+                let city = args["city"]?.string ?? "Unknown"
                 let temp = Int.random(in: 15...35)
                 let conditions = ["Sunny", "Cloudy", "Rainy", "Partly Cloudy"].randomElement()!
                 return [
-                    "city": .string(city),
-                    "temperature": .number(Double(temp)),
-                    "unit": .string("celsius"),
-                    "conditions": .string(conditions)
+                    "city": RAToolValue(city),
+                    "temperature": RAToolValue(Double(temp)),
+                    "unit": RAToolValue("celsius"),
+                    "conditions": RAToolValue(conditions)
                 ]
             }
-            
+
             // 2. Calculator tool
-            let calcTool = ToolDefinition(
+            let calcTool = RAToolDefinition(
                 name: "calculate",
                 description: "Performs basic arithmetic calculation",
                 parameters: [
-                    ToolParameter(name: "expression", type: .string, description: "Math expression like '2 + 3'", required: true)
+                    RAToolParameter(name: "expression", type: .string, description: "Math expression like '2 + 3'", required: true)
                 ]
             )
             await RunAnywhere.registerTool(calcTool) { args in
-                let expr = args["expression"]?.stringValue ?? "0"
+                let expr = args["expression"]?.string ?? "0"
                 // Simple eval via NSExpression
                 let nsExpr = NSExpression(format: expr)
                 let result = nsExpr.expressionValue(with: nil, context: nil) as? Double ?? 0
                 return [
-                    "expression": .string(expr),
-                    "result": .number(result)
+                    "expression": RAToolValue(expr),
+                    "result": RAToolValue(result)
                 ]
             }
-            
+
             // 3. Time tool
-            let timeTool = ToolDefinition(
+            let timeTool = RAToolDefinition(
                 name: "get_time",
                 description: "Gets the current date and time",
                 parameters: []
@@ -302,8 +302,8 @@ struct ToolCallingView: View {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
                 return [
-                    "datetime": .string(formatter.string(from: Date())),
-                    "timezone": .string(TimeZone.current.identifier)
+                    "datetime": RAToolValue(formatter.string(from: Date())),
+                    "timezone": RAToolValue(TimeZone.current.identifier)
                 ]
             }
             
@@ -322,30 +322,31 @@ struct ToolCallingView: View {
         addLog(.info, "Prompt: \"\(userPrompt)\"")
         
         do {
-            let options = ToolCallingOptions(
-                maxToolCalls: 3,
-                autoExecute: true,
-                temperature: 0.7,
-                maxTokens: 512,
-                systemPrompt: "You are a helpful assistant with access to tools. Use them when appropriate."
+            var options = RALLMGenerationOptions.defaults()
+            options.temperature = 0.7
+            options.maxTokens = 512
+            options.systemPrompt = "You are a helpful assistant with access to tools. Use them when appropriate."
+
+            var toolOptions = RAToolCallingOptions.defaults()
+            toolOptions.maxToolCalls = 3
+            toolOptions.autoExecute = true
+
+            let result = try await RunAnywhere.generateWithTools(
+                prompt: userPrompt,
+                options: options,
+                toolOptions: toolOptions
             )
-            
-            let result = try await RunAnywhere.generateWithTools(userPrompt, options: options)
-            
+
             // Log tool calls
             for (i, call) in result.toolCalls.enumerated() {
-                let argsStr = call.arguments.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
-                addLog(.toolCall, "Tool call #\(i+1): \(call.toolName)(\(argsStr))")
-                
+                addLog(.toolCall, "Tool call #\(i+1): \(call.name)(\(call.argumentsJson))")
+
                 if i < result.toolResults.count {
                     let tr = result.toolResults[i]
-                    if tr.success, let resultDict = tr.result {
-                        let resultStr = resultDict.keys.sorted().map { key in
-                            "\(key): \(resultDict[key].map { "\($0)" } ?? "nil")"
-                        }.joined(separator: ", ")
-                        addLog(.toolResult, "Result: \(resultStr)")
-                    } else if !tr.success {
-                        addLog(.error, "Tool error: \(tr.error ?? "Unknown")")
+                    if tr.success {
+                        addLog(.toolResult, "Result: \(tr.resultJson)")
+                    } else {
+                        addLog(.error, "Tool error: \(tr.error.isEmpty ? "Unknown" : tr.error)")
                     }
                 }
             }

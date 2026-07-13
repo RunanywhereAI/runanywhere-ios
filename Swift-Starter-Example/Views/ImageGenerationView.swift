@@ -296,7 +296,7 @@ struct ImageGenerationView: View {
         HStack(spacing: 12) {
             Button {
                 if isGenerating {
-                    Task { try? await RunAnywhere.cancelImageGeneration() }
+                    isGenerating = false
                 } else {
                     Task { await generateImage() }
                 }
@@ -324,98 +324,14 @@ struct ImageGenerationView: View {
     
     private func generateImage() async {
         guard !prompt.isEmpty else { return }
-        
-        isGenerating = true
+
+        // On-device image generation (diffusion) is not exposed by the current
+        // RunAnywhere SDK surface, so surface a clear message instead of
+        // pretending to generate.
         generatedImage = nil
-        errorMessage = nil
         progress = 0
-        statusMessage = "Starting..."
-        
-        do {
-            let options = DiffusionGenerationOptions(
-                prompt: prompt,
-                width: width,
-                height: height,
-                steps: steps,
-                guidanceScale: Float(guidanceScale)
-            )
-            
-            let result = try await RunAnywhere.generateImage(
-                prompt: prompt,
-                options: options
-            ) { [self] update in
-                Task { @MainActor in
-                    self.progress = Double(update.progress)
-                    self.statusMessage = "Step \(update.currentStep)/\(update.totalSteps)"
-                }
-                return true // continue generating
-            }
-            
-            // Convert result data to PlatformImage
-            let imageData = result.imageData
-            // Try to create image from PNG/JPEG data first
-            #if os(iOS)
-            if let img = PlatformImage(data: imageData) {
-                generatedImage = img
-            } else {
-                // Raw RGBA data - convert to image
-                let cgImage = createCGImage(
-                    from: imageData,
-                    width: Int(result.width),
-                    height: Int(result.height)
-                )
-                if let cg = cgImage {
-                    generatedImage = PlatformImage(cgImage: cg)
-                }
-            }
-            #elseif os(macOS)
-            if let img = PlatformImage(data: imageData) {
-                generatedImage = img
-            } else {
-                let cgImage = createCGImage(
-                    from: imageData,
-                    width: Int(result.width),
-                    height: Int(result.height)
-                )
-                if let cg = cgImage {
-                    generatedImage = PlatformImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
-                }
-            }
-            #endif
-            
-            generationTimeMs = UInt64(result.generationTimeMs)
-            statusMessage = "Done!"
-            
-        } catch {
-            errorMessage = "Generation failed: \(error.localizedDescription)"
-        }
-        
-        isGenerating = false
-    }
-    
-    private func createCGImage(from data: Data, width: Int, height: Int) -> CGImage? {
-        let bytesPerPixel = 4
-        let bytesPerRow = bytesPerPixel * width
-        guard data.count >= bytesPerRow * height else { return nil }
-        
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-        
-        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
-        
-        return CGImage(
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bitsPerPixel: bytesPerPixel * 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo,
-            provider: provider,
-            decode: nil,
-            shouldInterpolate: true,
-            intent: .defaultIntent
-        )
+        statusMessage = "Ready"
+        errorMessage = "Image generation is not available in this SDK version."
     }
 
     private func platformImage(_ image: PlatformImage) -> Image {

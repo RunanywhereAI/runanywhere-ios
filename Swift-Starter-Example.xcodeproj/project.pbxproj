@@ -10,6 +10,7 @@
 		54C939B02F17927000BA344C /* RunAnywhere in Frameworks */ = {isa = PBXBuildFile; productRef = 54C939AF2F17927000BA344C /* RunAnywhere */; };
 		54C939B22F17927000BA344C /* RunAnywhereLlamaCPP in Frameworks */ = {isa = PBXBuildFile; productRef = 54C939B12F17927000BA344C /* RunAnywhereLlamaCPP */; };
 		54C939B42F17927000BA344C /* RunAnywhereONNX in Frameworks */ = {isa = PBXBuildFile; productRef = 54C939B32F17927000BA344C /* RunAnywhereONNX */; };
+		54C939B52F17927000BA344C /* RunAnywhereMLX in Frameworks */ = {isa = PBXBuildFile; productRef = 54C939B62F17927000BA344C /* RunAnywhereMLX */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 				54C939B02F17927000BA344C /* RunAnywhere in Frameworks */,
 				54C939B22F17927000BA344C /* RunAnywhereLlamaCPP in Frameworks */,
 				54C939B42F17927000BA344C /* RunAnywhereONNX in Frameworks */,
+				54C939B52F17927000BA344C /* RunAnywhereMLX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +79,7 @@
 				54C939AF2F17927000BA344C /* RunAnywhere */,
 				54C939B12F17927000BA344C /* RunAnywhereLlamaCPP */,
 				54C939B32F17927000BA344C /* RunAnywhereONNX */,
+				54C939B62F17927000BA344C /* RunAnywhereMLX */,
 			);
 			productName = "Swift-Starter-Example";
 			productReference = 54C9397A2F17926200BA344C /* Swift-Starter-Example.app */;
@@ -278,7 +281,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -319,7 +322,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -364,8 +367,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RunanywhereAI/runanywhere-sdks";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.19.6;
+				kind = revision;
+				revision = 9de212df5eafb2cae7785d7841e76f24ebd08f54;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -385,6 +388,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 54C939AE2F17927000BA344C /* XCRemoteSwiftPackageReference "runanywhere-sdks" */;
 			productName = RunAnywhereONNX;
+		};
+		54C939B62F17927000BA344C /* RunAnywhereMLX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 54C939AE2F17927000BA344C /* XCRemoteSwiftPackageReference "runanywhere-sdks" */;
+			productName = RunAnywhereMLX;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

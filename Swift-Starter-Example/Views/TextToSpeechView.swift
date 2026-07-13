@@ -285,8 +285,9 @@ struct TextToSpeechView: View {
         
         Task {
             do {
-                let options = TTSOptions(rate: speechRate)
-                
+                var options = RATTSOptions.defaults()
+                options.speakingRate = speechRate
+
                 // SDK handles both synthesis AND playback internally - no manual audio handling needed!
                 let result = try await RunAnywhere.speak(text, options: options)
                 

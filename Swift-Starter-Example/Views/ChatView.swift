@@ -273,33 +273,36 @@ struct ChatView: View {
         
         streamingTask = Task {
             do {
-                let result = try await RunAnywhere.generateStream(
-                    text,
-                    options: LLMGenerationOptions(
-                        maxTokens: 256,
-                        temperature: 0.8,
-                        systemPrompt: "You are a helpful assistant. Respond directly and concisely."
-                    )
-                )
-                
-                for try await token in result.stream {
+                var options = RALLMGenerationOptions.defaults()
+                options.maxTokens = 256
+                options.temperature = 0.8
+                options.systemPrompt = "You are a helpful assistant. Respond directly and concisely."
+
+                let stream = try await RunAnywhere.generateStream(prompt: text, options: options)
+
+                var tokensPerSecond: Double = 0
+                var totalTokens = 0
+                for await event in stream {
                     guard !Task.isCancelled else { break }
-                    await MainActor.run {
-                        currentResponse += token
+                    if !event.token.isEmpty {
+                        await MainActor.run {
+                            currentResponse += event.token
+                        }
+                    }
+                    if event.isFinal, event.hasResult {
+                        tokensPerSecond = Double(event.result.tokensPerSecond)
+                        totalTokens = Int(event.result.totalTokens)
                     }
                 }
-                
-                // Get final metrics
-                let metrics = try await result.result.value
-                
+
                 await MainActor.run {
                     if !Task.isCancelled {
                         let aiMessage = ChatMessage(
                             text: String.stripThinkingTags(currentResponse),
                             isUser: false,
                             timestamp: Date(),
-                            tokensPerSecond: metrics.tokensPerSecond,
-                            totalTokens: metrics.tokensUsed
+                            tokensPerSecond: tokensPerSecond,
+                            totalTokens: totalTokens
                         )
                         messages.append(aiMessage)
                     }

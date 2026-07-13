@@ -174,50 +174,50 @@ final class ModelService: ObservableObject {
 
     /// Computed model ID for the active STT variant
     var sttModelId: String { selectedSTTVariant.rawValue }
-    
+
     // MARK: - Download State
     @Published var isLLMDownloading = false
     @Published var isSTTDownloading = false
     @Published var isTTSDownloading = false
     @Published var isVLMDownloading = false
     @Published var isDiffusionDownloading = false
-    
+
     @Published var llmDownloadProgress: Double = 0.0
     @Published var sttDownloadProgress: Double = 0.0
     @Published var ttsDownloadProgress: Double = 0.0
     @Published var vlmDownloadProgress: Double = 0.0
     @Published var diffusionDownloadProgress: Double = 0.0
-    
+
     // MARK: - Load State
     @Published var isLLMLoading = false
     @Published var isSTTLoading = false
     @Published var isTTSLoading = false
     @Published var isVLMLoading = false
     @Published var isDiffusionLoading = false
-    
+
     // MARK: - Loaded State
     @Published private(set) var isLLMLoaded = false
     @Published private(set) var isSTTLoaded = false
     @Published private(set) var isTTSLoaded = false
     @Published private(set) var isVLMLoaded = false
     @Published private(set) var isDiffusionLoaded = false
-    
+
     /// Status message for diffusion (loading can take minutes for CoreML compilation)
     @Published var diffusionStatusMessage = ""
-    
+
     // MARK: - Computed Properties
     var isVoiceAgentReady: Bool {
         isLLMLoaded && isSTTLoaded && isTTSLoaded
     }
-    
+
     var isAnyDownloading: Bool {
         isLLMDownloading || isSTTDownloading || isTTSDownloading || isVLMDownloading || isDiffusionDownloading
     }
-    
+
     var isAnyLoading: Bool {
         isLLMLoading || isSTTLoading || isTTSLoading || isVLMLoading || isDiffusionLoading
     }
-    
+
     // MARK: - Initialization
     init() {
         if let raw = UserDefaults.standard.string(forKey: "selectedLLMVariant"),
@@ -237,88 +237,160 @@ final class ModelService: ObservableObject {
             await refreshLoadedStates()
         }
     }
-    
+
     // MARK: - Model Registration
-    /// Register default models with the SDK
-    static func registerDefaultModels() {
+    /// Register default models with the SDK.
+    ///
+    /// Registration is `async throws` in the current SDK (commons owns id/name/
+    /// format/artifact derivation), so each call is awaited and failures are
+    /// logged per-model instead of aborting the whole catalog.
+    static func registerDefaultModels() async {
         // Register all LLM model variants (LFM2 + Qwen 3 + Qwen 3.5)
         for variant in LLMModelVariant.allCases {
-            RunAnywhere.registerModel(
-                id: variant.rawValue,
-                name: variant.displayName,
-                url: variant.url,
-                framework: .llamaCpp,
-                memoryRequirement: variant.memoryRequirement
-            )
+            do {
+                _ = try await RunAnywhere.registerModel(
+                    id: variant.rawValue,
+                    name: variant.displayName,
+                    url: variant.url.absoluteString,
+                    framework: .llamaCpp,
+                    memoryRequirement: variant.memoryRequirement
+                )
+            } catch {
+                print("⚠️ Failed to register LLM \(variant.rawValue): \(error)")
+            }
         }
-        
+
         // Register all STT model variants (Whisper Tiny / Base / Small)
         for variant in STTModelVariant.allCases {
-            RunAnywhere.registerModel(
-                id: variant.rawValue,
-                name: variant.registrationName,
-                url: variant.url,
-                framework: .onnx,
-                modality: .speechRecognition,
-                artifactType: .archive(.tarGz, structure: .nestedDirectory),
-                memoryRequirement: variant.memoryRequirement
-            )
+            do {
+                _ = try await RunAnywhere.registerModel(
+                    archive: variant.url.absoluteString,
+                    structure: .nestedDirectory,
+                    id: variant.rawValue,
+                    name: variant.registrationName,
+                    framework: .sherpa,
+                    modality: .speechRecognition,
+                    archiveType: .tarGz,
+                    memoryRequirement: variant.memoryRequirement
+                )
+            } catch {
+                print("⚠️ Failed to register STT \(variant.rawValue): \(error)")
+            }
         }
-        
+
         // Register TTS voice - Piper US English (natural sounding)
-        if let piperURL = URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/vits-piper-en_US-lessac-medium.tar.gz") {
-            RunAnywhere.registerModel(
+        do {
+            _ = try await RunAnywhere.registerModel(
+                archive: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/vits-piper-en_US-lessac-medium.tar.gz",
+                structure: .nestedDirectory,
                 id: ttsModelId,
                 name: "Piper TTS (US English - Medium)",
-                url: piperURL,
-                framework: .onnx,
+                framework: .sherpa,
                 modality: .speechSynthesis,
-                artifactType: .archive(.tarGz, structure: .nestedDirectory),
+                archiveType: .tarGz,
                 memoryRequirement: 65_000_000
             )
+        } catch {
+            print("⚠️ Failed to register TTS \(ttsModelId): \(error)")
         }
-        
+
         // Register VLM model - SmolVLM 256M (tiny multimodal model, GGUF + mmproj)
         let vlmModelURL = URL(string: "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/SmolVLM-256M-Instruct-Q8_0.gguf")!
         let vlmMmprojURL = URL(string: "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-256M-Instruct-f16.gguf")!
-        
-        RunAnywhere.registerMultiFileModel(
-            id: vlmModelId,
-            name: "SmolVLM 256M Instruct (Q8)",
-            files: [
-                ModelFileDescriptor(url: vlmModelURL, filename: "SmolVLM-256M-Instruct-Q8_0.gguf"),
-                ModelFileDescriptor(url: vlmMmprojURL, filename: "mmproj-SmolVLM-256M-Instruct-f16.gguf"),
-            ],
-            framework: .llamaCpp,
-            modality: .multimodal,
-            memoryRequirement: 365_000_000
-        )
-        
-        // Register Diffusion model - Apple Stable Diffusion 1.5 CoreML (palettized, split_einsum_v2 for ANE)
-        if let sd15URL = URL(string: "https://huggingface.co/apple/coreml-stable-diffusion-v1-5-palettized/resolve/main/coreml-stable-diffusion-v1-5-palettized_split_einsum_v2_compiled.zip") {
-            RunAnywhere.registerModel(
+        let vlmDescriptors: [RAModelFileDescriptor] = [
+            makeDescriptor(url: vlmModelURL, filename: "SmolVLM-256M-Instruct-Q8_0.gguf", modality: .multimodal),
+            makeDescriptor(url: vlmMmprojURL, filename: "mmproj-SmolVLM-256M-Instruct-f16.gguf", modality: .multimodal)
+        ]
+        do {
+            _ = try await RunAnywhere.registerModel(
+                multiFile: vlmDescriptors,
+                id: vlmModelId,
+                name: "SmolVLM 256M Instruct (Q8)",
+                framework: .llamaCpp,
+                modality: .multimodal,
+                memoryRequirement: 365_000_000
+            )
+        } catch {
+            print("⚠️ Failed to register VLM \(vlmModelId): \(error)")
+        }
+
+        // Register Diffusion model - Apple Stable Diffusion 1.5 CoreML (palettized,
+        // split_einsum_v2 for ANE). Kept as a catalog entry; on-device image
+        // generation is not exposed by the current SDK surface.
+        do {
+            _ = try await RunAnywhere.registerModel(
+                archive: "https://huggingface.co/apple/coreml-stable-diffusion-v1-5-palettized/resolve/main/coreml-stable-diffusion-v1-5-palettized_split_einsum_v2_compiled.zip",
+                structure: .nestedDirectory,
                 id: diffusionModelId,
                 name: "Stable Diffusion 1.5 (CoreML)",
-                url: sd15URL,
                 framework: .coreml,
                 modality: .imageGeneration,
-                artifactType: .archive(.zip, structure: .nestedDirectory),
+                archiveType: .zip,
                 memoryRequirement: 1_600_000_000
             )
+        } catch {
+            print("⚠️ Failed to register Diffusion \(diffusionModelId): \(error)")
         }
-        
+
         print("✅ Models registered: LLM (\(LLMModelVariant.allCases.count) variants), STT (\(STTModelVariant.allCases.count) variants), TTS, VLM, Diffusion")
     }
-    
+
+    /// Build a multi-file descriptor with an inferred role, mirroring the
+    /// canonical `ModelCatalogBootstrap` in the in-repo iOS example.
+    private static func makeDescriptor(url: URL, filename: String, modality: ModelCategory) -> RAModelFileDescriptor {
+        var descriptor = RAModelFileDescriptor(url: url, filename: filename, isRequired: true)
+        descriptor.role = RunAnywhere.inferModelFileRole(filename: filename, modality: modality)
+        return descriptor
+    }
+
     // MARK: - State Refresh
     func refreshLoadedStates() async {
-        isLLMLoaded = await RunAnywhere.isModelLoaded
-        isSTTLoaded = await RunAnywhere.isSTTModelLoaded
-        isTTSLoaded = await RunAnywhere.isTTSVoiceLoaded
-        isVLMLoaded = await RunAnywhere.isVLMModelLoaded
-        isDiffusionLoaded = await RunAnywhere.isDiffusionModelLoaded
+        isLLMLoaded = Self.isCategoryLoaded(.language)
+        isSTTLoaded = Self.isCategoryLoaded(.speechRecognition)
+        isTTSLoaded = Self.isCategoryLoaded(.speechSynthesis)
+        isVLMLoaded = Self.isCategoryLoaded(.multimodal)
+        isDiffusionLoaded = Self.isCategoryLoaded(.imageGeneration)
     }
-    
+
+    // MARK: - Lifecycle Helpers (unified proto-request API)
+
+    /// Whether a model is currently loaded for a modality category.
+    private static func isCategoryLoaded(_ category: RAModelCategory) -> Bool {
+        var request = RACurrentModelRequest()
+        request.category = category
+        return RunAnywhere.currentModel(request).found
+    }
+
+    /// Load `modelId` under `category` via the unified lifecycle API.
+    /// Returns whether the load succeeded.
+    private func load(_ modelId: String, category: RAModelCategory) async -> Bool {
+        var request = RAModelLoadRequest()
+        request.modelID = modelId
+        request.category = category
+        return await RunAnywhere.loadModel(request).success
+    }
+
+    /// Unload whatever model is loaded under `category`.
+    private func unload(category: RAModelCategory) async {
+        var request = RAModelUnloadRequest()
+        request.category = category
+        _ = await RunAnywhere.unloadModel(request)
+    }
+
+    /// Download a registered model by id, forwarding progress to `onProgress`.
+    /// The registry entry (URL, artifact layout, checksums) is resolved by the
+    /// SDK from the id, so a stub `RAModelInfo` carrying only the id is enough.
+    private func download(_ modelId: String, onProgress: @escaping (Double) -> Void) async throws {
+        var stub = RAModelInfo()
+        stub.id = modelId
+        for try await progress in RunAnywhere.downloadModelStream(stub) {
+            onProgress(Double(progress.overallProgress))
+            if progress.stage == .completed {
+                break
+            }
+        }
+    }
+
     // MARK: - LLM Operations
     /// Download and load the currently selected LLM model variant
     func downloadAndLoadLLM() async {
@@ -327,44 +399,33 @@ final class ModelService: ObservableObject {
         let modelId = llmModelId
 
         isLLMLoading = true
-        do {
-            try await RunAnywhere.loadModel(modelId)
+        if await load(modelId, category: .language) {
             isLLMLoaded = true
             isLLMLoading = false
             print("✅ LLM model loaded from cache (\(selectedLLMVariant.displayName))")
             return
-        } catch {
-            print("LLM load attempt failed (will download): \(error)")
-            isLLMLoading = false
         }
+        isLLMLoading = false
 
         isLLMDownloading = true
         llmDownloadProgress = 0.0
-
         do {
-            let progressStream = try await RunAnywhere.downloadModel(modelId)
-            for await progress in progressStream {
-                llmDownloadProgress = progress.overallProgress
-                if progress.stage == .completed {
-                    break
-                }
+            try await download(modelId) { [weak self] progress in
+                self?.llmDownloadProgress = progress
             }
         } catch {
             print("LLM download error: \(error)")
             isLLMDownloading = false
             return
         }
-
         isLLMDownloading = false
+
         isLLMLoading = true
-
-        do {
-            try await RunAnywhere.loadModel(modelId)
+        if await load(modelId, category: .language) {
             isLLMLoaded = true
-        } catch {
-            print("LLM load error: \(error)")
+        } else {
+            print("LLM load error after download")
         }
-
         isLLMLoading = false
     }
 
@@ -373,15 +434,13 @@ final class ModelService: ObservableObject {
         guard variant != selectedLLMVariant else { return }
 
         if isLLMLoaded {
-            do { try await RunAnywhere.unloadModel() } catch {
-                print("LLM unload error during variant switch: \(error)")
-            }
+            await unload(category: .language)
             isLLMLoaded = false
         }
 
         selectedLLMVariant = variant
     }
-    
+
     // MARK: - STT Operations
     /// Download and load the currently selected STT model variant
     func downloadAndLoadSTT() async {
@@ -389,49 +448,34 @@ final class ModelService: ObservableObject {
 
         let modelId = sttModelId
 
-        // Try to load first if already downloaded
         isSTTLoading = true
-        do {
-            try await RunAnywhere.loadSTTModel(modelId)
+        if await load(modelId, category: .speechRecognition) {
             isSTTLoaded = true
             isSTTLoading = false
             print("✅ STT model loaded from cache (\(selectedSTTVariant.displayName))")
             return
-        } catch {
-            print("STT load attempt failed (will download): \(error)")
-            isSTTLoading = false
         }
+        isSTTLoading = false
 
-        // If loading failed, download the model
         isSTTDownloading = true
         sttDownloadProgress = 0.0
-
         do {
-            let progressStream = try await RunAnywhere.downloadModel(modelId)
-            for await progress in progressStream {
-                sttDownloadProgress = progress.overallProgress
-                if progress.stage == .completed {
-                    break
-                }
+            try await download(modelId) { [weak self] progress in
+                self?.sttDownloadProgress = progress
             }
         } catch {
             print("STT download error: \(error)")
             isSTTDownloading = false
             return
         }
-
         isSTTDownloading = false
 
-        // Load the model after download
         isSTTLoading = true
-
-        do {
-            try await RunAnywhere.loadSTTModel(modelId)
+        if await load(modelId, category: .speechRecognition) {
             isSTTLoaded = true
-        } catch {
-            print("STT load error: \(error)")
+        } else {
+            print("STT load error after download")
         }
-
         isSTTLoading = false
     }
 
@@ -440,9 +484,7 @@ final class ModelService: ObservableObject {
         guard variant != selectedSTTVariant else { return }
 
         if isSTTLoaded {
-            do { try await RunAnywhere.unloadSTTModel() } catch {
-                print("STT unload error during variant switch: \(error)")
-            }
+            await unload(category: .speechRecognition)
             isSTTLoaded = false
         }
 
@@ -452,213 +494,90 @@ final class ModelService: ObservableObject {
     /// Unload the current STT model (returns to model selection)
     func unloadSTTModel() async {
         guard isSTTLoaded else { return }
-        do { try await RunAnywhere.unloadSTTModel() } catch {
-            print("STT unload error: \(error)")
-        }
+        await unload(category: .speechRecognition)
         isSTTLoaded = false
     }
-    
+
     // MARK: - TTS Operations
     /// Download and load TTS voice
     func downloadAndLoadTTS() async {
         guard !isTTSDownloading && !isTTSLoading else { return }
-        
-        // Try to load first if already downloaded
+
         isTTSLoading = true
-        do {
-            try await RunAnywhere.loadTTSVoice(Self.ttsModelId)
+        if await load(Self.ttsModelId, category: .speechSynthesis) {
             isTTSLoaded = true
             isTTSLoading = false
             print("✅ TTS voice loaded from cache")
             return
-        } catch {
-            print("TTS load attempt failed (will download): \(error)")
-            isTTSLoading = false
         }
-        
-        // If loading failed, download the model
+        isTTSLoading = false
+
         isTTSDownloading = true
         ttsDownloadProgress = 0.0
-        
         do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.ttsModelId)
-            for await progress in progressStream {
-                ttsDownloadProgress = progress.overallProgress
-                if progress.stage == .completed {
-                    break
-                }
+            try await download(Self.ttsModelId) { [weak self] progress in
+                self?.ttsDownloadProgress = progress
             }
         } catch {
             print("TTS download error: \(error)")
             isTTSDownloading = false
             return
         }
-        
         isTTSDownloading = false
-        
-        // Load the voice after download
+
         isTTSLoading = true
-        
-        do {
-            try await RunAnywhere.loadTTSVoice(Self.ttsModelId)
+        if await load(Self.ttsModelId, category: .speechSynthesis) {
             isTTSLoaded = true
-        } catch {
-            print("TTS load error: \(error)")
+        } else {
+            print("TTS load error after download")
         }
-        
         isTTSLoading = false
     }
-    
+
     // MARK: - VLM Operations
     /// Download and load VLM model (SmolVLM 256M - multimodal)
     func downloadAndLoadVLM() async {
         guard !isVLMDownloading && !isVLMLoading else { return }
-        
-        // Try to load first if already downloaded
+
         isVLMLoading = true
-        do {
-            let models = try await RunAnywhere.availableModels()
-            if let vlmModel = models.first(where: { $0.id == Self.vlmModelId && $0.isDownloaded }) {
-                try await RunAnywhere.loadVLMModel(vlmModel)
-                isVLMLoaded = true
-                isVLMLoading = false
-                print("✅ VLM model loaded from cache")
-                return
-            }
-        } catch {
-            print("VLM load attempt failed (will download): \(error)")
+        if await load(Self.vlmModelId, category: .multimodal) {
+            isVLMLoaded = true
+            isVLMLoading = false
+            print("✅ VLM model loaded from cache")
+            return
         }
         isVLMLoading = false
-        
-        // Download the model
+
         isVLMDownloading = true
         vlmDownloadProgress = 0.0
-        
         do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.vlmModelId)
-            for await progress in progressStream {
-                vlmDownloadProgress = progress.overallProgress
-                if progress.stage == .completed {
-                    break
-                }
+            try await download(Self.vlmModelId) { [weak self] progress in
+                self?.vlmDownloadProgress = progress
             }
         } catch {
             print("VLM download error: \(error)")
             isVLMDownloading = false
             return
         }
-        
         isVLMDownloading = false
-        
-        // Load the model after download
+
         isVLMLoading = true
-        
-        do {
-            let models = try await RunAnywhere.availableModels()
-            if let vlmModel = models.first(where: { $0.id == Self.vlmModelId }) {
-                try await RunAnywhere.loadVLMModel(vlmModel)
-                isVLMLoaded = true
-            } else {
-                print("VLM model not found in registry after download")
-            }
-        } catch {
-            print("VLM load error: \(error)")
+        if await load(Self.vlmModelId, category: .multimodal) {
+            isVLMLoaded = true
+        } else {
+            print("VLM load error after download")
         }
-        
         isVLMLoading = false
     }
-    
+
     // MARK: - Diffusion Operations
-    /// Download and load Diffusion model (Stable Diffusion 1.5 CoreML)
-    /// Note: First-time CoreML compilation can take 5-15 minutes
+    /// Diffusion / on-device image generation is not exposed by the current
+    /// RunAnywhere SDK surface. The model stays registered as a catalog entry,
+    /// but there is no load/generate path, so surface a clear status instead.
     func downloadAndLoadDiffusion() async {
-        guard !isDiffusionDownloading && !isDiffusionLoading else { return }
-        
-        // Try to load first if already downloaded
-        isDiffusionLoading = true
-        diffusionStatusMessage = "Checking for cached model..."
-        do {
-            let models = try await RunAnywhere.availableModels()
-            if let model = models.first(where: { $0.id == Self.diffusionModelId && $0.isDownloaded }),
-               let path = model.localPath {
-                diffusionStatusMessage = "Loading CoreML pipeline (first time may take 5-15 min)..."
-                let config = DiffusionConfiguration(
-                    modelVariant: .sd15,
-                    enableSafetyChecker: true,
-                    reduceMemory: true
-                )
-                try await RunAnywhere.loadDiffusionModel(
-                    modelPath: path.path,
-                    modelId: model.id,
-                    modelName: model.name,
-                    configuration: config
-                )
-                isDiffusionLoaded = true
-                isDiffusionLoading = false
-                diffusionStatusMessage = "Model loaded"
-                print("✅ Diffusion model loaded from cache")
-                return
-            }
-        } catch {
-            print("Diffusion load attempt failed (will download): \(error)")
-        }
-        isDiffusionLoading = false
-        
-        // Download the model
-        isDiffusionDownloading = true
-        diffusionDownloadProgress = 0.0
-        diffusionStatusMessage = "Downloading (~1.6 GB)..."
-        
-        do {
-            let progressStream = try await RunAnywhere.downloadModel(Self.diffusionModelId)
-            for await progress in progressStream {
-                diffusionDownloadProgress = progress.overallProgress
-                if progress.stage == .completed {
-                    break
-                }
-            }
-        } catch {
-            print("Diffusion download error: \(error)")
-            diffusionStatusMessage = "Download failed"
-            isDiffusionDownloading = false
-            return
-        }
-        
-        isDiffusionDownloading = false
-        
-        // Load the model after download
-        isDiffusionLoading = true
-        diffusionStatusMessage = "Loading CoreML pipeline (first time may take 5-15 min)..."
-        
-        do {
-            let models = try await RunAnywhere.availableModels()
-            if let model = models.first(where: { $0.id == Self.diffusionModelId }),
-               let path = model.localPath {
-                let config = DiffusionConfiguration(
-                    modelVariant: .sd15,
-                    enableSafetyChecker: true,
-                    reduceMemory: true
-                )
-                try await RunAnywhere.loadDiffusionModel(
-                    modelPath: path.path,
-                    modelId: model.id,
-                    modelName: model.name,
-                    configuration: config
-                )
-                isDiffusionLoaded = true
-                diffusionStatusMessage = "Model loaded"
-            } else {
-                print("Diffusion model not found in registry after download")
-                diffusionStatusMessage = "Model not found after download"
-            }
-        } catch {
-            print("Diffusion load error: \(error)")
-            diffusionStatusMessage = "Load failed: \(error.localizedDescription)"
-        }
-        
-        isDiffusionLoading = false
+        diffusionStatusMessage = "Image generation is not available in this SDK version."
     }
-    
+
     // MARK: - Batch Operations
     /// Download and load all models for voice agent
     /// Note: Downloads run sequentially to avoid SDK concurrency issues
@@ -668,27 +587,12 @@ final class ModelService: ObservableObject {
         await downloadAndLoadSTT()
         await downloadAndLoadTTS()
     }
-    
+
     /// Unload all models
     func unloadAllModels() async {
-        do {
-            try await RunAnywhere.unloadModel()
-        } catch {
-            print("LLM unload error: \(error)")
-        }
-        
-        do {
-            try await RunAnywhere.unloadSTTModel()
-        } catch {
-            print("STT unload error: \(error)")
-        }
-        
-        do {
-            try await RunAnywhere.unloadTTSVoice()
-        } catch {
-            print("TTS unload error: \(error)")
-        }
-        
+        await unload(category: .language)
+        await unload(category: .speechRecognition)
+        await unload(category: .speechSynthesis)
         await refreshLoadedStates()
     }
 }

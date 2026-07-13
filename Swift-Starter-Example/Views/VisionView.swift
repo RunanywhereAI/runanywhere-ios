@@ -296,29 +296,31 @@ struct VisionView: View {
         
         do {
             #if os(iOS)
-            let image = VLMImage(image: uiImage)
-            #elseif os(macOS)
-            // Convert NSImage to RGB data for VLM
-            guard let tiffData = uiImage.tiffRepresentation,
-                  let bitmap = NSBitmapImageRep(data: tiffData),
-                  let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            guard let image = RAVLMImage.fromUIImage(uiImage) else {
                 errorMessage = "Failed to convert image"
                 isProcessing = false
                 return
             }
-            let image = VLMImage(rgbPixels: pngData, width: Int(bitmap.pixelsWide), height: Int(bitmap.pixelsHigh))
+            #elseif os(macOS)
+            guard let image = RAVLMImage.fromNSImage(uiImage) else {
+                errorMessage = "Failed to convert image"
+                isProcessing = false
+                return
+            }
             #endif
-            let result = try await RunAnywhere.processImageStream(
+            var options = RAVLMGenerationOptions.defaults()
+            options.maxTokens = 300
+            let stream = try await RunAnywhere.processImageStream(
                 image,
                 prompt: prompt,
-                maxTokens: 300
+                options: options
             )
-            
+
             let startTime = Date()
             var tokenCount = 0
-            
-            for try await token in result.stream {
-                description += token
+
+            for await event in stream {
+                description += event.token
                 tokenCount += 1
                 let elapsed = Date().timeIntervalSince(startTime)
                 if elapsed > 0 {

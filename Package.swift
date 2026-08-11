@@ -45,7 +45,7 @@ let package = Package(
         //
         .package(
             url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
-            from: "0.20.16"
+            from: "0.20.17"
         ),
     ],
     targets: [

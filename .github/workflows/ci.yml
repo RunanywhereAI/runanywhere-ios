@@ -1,0 +1,73 @@
+name: CI
+
+# What this gate proves: a clean clone of THIS repo — with no monorepo checkout
+# and no locally staged XCFrameworks — resolves the RunAnywhere Swift SDK from
+# its published GitHub release and compiles the app plus both extensions.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (iOS Simulator)
+    # macos-latest is the macOS 26 arm64 image — the only GitHub-hosted line that
+    # ships Xcode 26. Package.swift is `swift-tools-version: 6.2`, so an Xcode 16
+    # image (macos-15) cannot even parse the manifest.
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select the newest installed Xcode
+        run: |
+          set -euo pipefail
+          echo "Xcode versions on this image:"
+          ls -d /Applications/Xcode*.app
+          xcode="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "${xcode}/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      # The point of this repo: the SDK is consumed 100% remotely. Package.swift
+      # pins github.com/RunanywhereAI/runanywhere-sdks by revision
+      # fe6adea31dcf91fb2315a0406edcd2dca4d71370 (== tag v0.20.15), and SwiftPM
+      # downloads the checksum-verified XCFramework artifacts during resolve.
+      # If this step fails, remote consumption is broken — that is the signal.
+      - name: Resolve SwiftPM dependencies (remote SDK release)
+        run: swift package resolve
+
+      - name: Resolve Xcode project package dependencies
+        run: |
+          xcodebuild \
+            -project RunAnywhereAI.xcodeproj \
+            -scheme RunAnywhereAI \
+            -resolvePackageDependencies
+
+      # RunAnywhereAI is the app scheme (com.apple.product-type.application). It
+      # builds the two embedded extensions — RunAnywhereKeyboard and
+      # RunAnywhereActivityExtensionExtension — as implicit dependencies, so this
+      # single build covers all three native targets.
+      #
+      # Code signing is disabled on purpose: a simulator build needs no identity,
+      # and the project carries DEVELOPMENT_TEAM = L86FH3K93L, which no hosted
+      # runner has credentials for.
+      - name: Build app + extensions
+        run: |
+          xcodebuild \
+            -project RunAnywhereAI.xcodeproj \
+            -scheme RunAnywhereAI \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build

@@ -40,11 +40,37 @@
 ### 1. Get the example
 
 ```bash
-git clone https://github.com/RunanywhereAI/runanywhere-sdks.git
-cd runanywhere-sdks/examples/ios/RunAnywhereAI
+git clone https://github.com/RunanywhereAI/runanywhere-ios.git
+cd runanywhere-ios
 ```
 
-### 2. Resolve packages and build
+### 2. Install the SDK (nothing to do — SwiftPM does it)
+
+`Package.swift` declares one dependency, and the Xcode project mirrors it. There
+is no local path, no `RUNANYWHERE_USE_LOCAL_NATIVES`, and no XCFramework to copy:
+
+```swift
+.package(
+    url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
+    revision: "fe6adea31dcf91fb2315a0406edcd2dca4d71370" // tag v0.20.15
+)
+```
+
+| Product | Role |
+|---|---|
+| `RunAnywhere` | Core SDK (always required) |
+| `RunAnywhereLlamaCPP` | LlamaCPP backend — LLM, VLM |
+| `RunAnywhereONNX` | Sherpa-ONNX backend — STT, TTS, VAD |
+| `RunAnywhereMLX` | Apple MLX backend (physical device / native macOS) |
+
+The pin is a **revision, not a version range**, because the v0.20.15 SDK manifest
+itself pins `mlx-swift` / `mlx-audio-swift` by revision and SwiftPM refuses to mix
+a stable-version requirement with an unstable-version dependency. That commit is
+exactly what tag `v0.20.15` points at, so resolve downloads the same
+checksum-verified XCFramework archives as the published release. See the comment
+block in `Package.swift` for the full rationale.
+
+### 3. Resolve packages and build
 
 ```bash
 swift package resolve
@@ -63,7 +89,7 @@ xcodebuild \
   build
 ```
 
-### 3. Run the app
+### 4. Run the app
 
 **Option A — Xcode:** Open `RunAnywhereAI.xcodeproj`, select a simulator or device, press **Run** (⌘R).
 
@@ -93,6 +119,24 @@ update the revision in both places and resolve again.
 |--------|--------|
 | New SDK release | Update the pinned revision in `Package.swift` + `RunAnywhereAI.xcodeproj`, then resolve |
 | Stale package errors | **File → Packages → Reset Package Caches**, then resolve again |
+
+---
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request.
+It is the same clean-clone gate as `./scripts/verify.sh`:
+
+1. `macos-latest` (macOS 26 arm64 — the image line that carries Xcode 26; Swift 6.2
+   is required by `swift-tools-version: 6.2`), newest installed Xcode selected.
+2. `swift package resolve` — proves the SDK resolves **remotely**, from the
+   published release, with no monorepo checkout on the runner.
+3. `xcodebuild build` for `generic/platform=iOS Simulator` on the **RunAnywhereAI**
+   app scheme, which pulls in `RunAnywhereKeyboard` and
+   `RunAnywhereActivityExtensionExtension` as implicit dependencies.
+
+Code signing is off in CI (`CODE_SIGNING_ALLOWED=NO`) — a simulator build needs no
+identity, and hosted runners have no access to `DEVELOPMENT_TEAM`.
 
 ---
 
@@ -126,7 +170,7 @@ RunAnywhereAI/
 │   └── Helpers/                # Markdown rendering, adaptive layout
 ├── RunAnywhereKeyboard/        # Keyboard extension target
 ├── RunAnywhereActivityExtension/  # Live Activity widget
-├── Package.swift               # Local Swift SDK dependency
+├── Package.swift               # Remote Swift SDK dependency (revision-pinned)
 ├── scripts/
 │   ├── build_and_run_ios_sample.sh
 │   ├── verify.sh
@@ -163,7 +207,9 @@ Filter runtime logs in Console.app: `subsystem:com.runanywhere.RunAnywhereAI`.
 | Resource | Link |
 |----------|------|
 | **Swift SDK** | [sdk/runanywhere-swift/README.md](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/sdk/runanywhere-swift/README.md) |
-| **Android example** | [examples/android/RunAnywhereAI](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/examples/android/RunAnywhereAI/README.md) |
+| **Android example** | [github.com/RunanywhereAI/runanywhere-android](https://github.com/RunanywhereAI/runanywhere-android) |
+| **Web example** | [github.com/RunanywhereAI/runanywhere-web](https://github.com/RunanywhereAI/runanywhere-web) |
+| **Electron example** | [github.com/RunanywhereAI/runanywhere-electron](https://github.com/RunanywhereAI/runanywhere-electron) |
 | **React Native example** | [examples/react-native/RunAnywhereAI](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/examples/react-native/RunAnywhereAI/README.md) |
 | **Flutter example** | [examples/flutter/RunAnywhereAI](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/examples/flutter/RunAnywhereAI/README.md) |
 | **App Store** | [RunAnywhere on the App Store](https://apps.apple.com/us/app/runanywhere/id6756506307) |

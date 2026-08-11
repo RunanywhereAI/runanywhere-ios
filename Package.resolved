@@ -1,5 +1,5 @@
 {
-  "originHash" : "39a3ae4c4c4358b85a636c067e515507cc6a902073c7a1986512bcdd62e99b9d",
+  "originHash" : "60e40cec57c42625b5fd9d3cef3800933dc8c4af00826fe210cb3e0e0a87d3d5",
   "pins" : [
     {
       "identity" : "devicekit",
@@ -31,23 +31,25 @@
     {
       "identity" : "mlx-audio-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Blaizzy/mlx-audio-swift.git",
+      "location" : "https://github.com/RunanywhereAI/mlx-audio-swift.git",
       "state" : {
-        "revision" : "580e952adda0cd6bdc5c04f402822adbb61525c8"
+        "revision" : "580e952adda0cd6bdc5c04f402822adbb61525c8",
+        "version" : "0.1.4"
       }
     },
     {
       "identity" : "mlx-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/PrismML-Eng/mlx-swift.git",
+      "location" : "https://github.com/RunanywhereAI/mlx-swift.git",
       "state" : {
-        "revision" : "563961dfcfd4589755190d285555e4f9eface890"
+        "revision" : "563961dfcfd4589755190d285555e4f9eface890",
+        "version" : "0.31.7"
       }
     },
     {
       "identity" : "mlx-swift-lm",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift-lm.git",
+      "location" : "https://github.com/ml-explore/mlx-swift-lm",
       "state" : {
         "revision" : "bd4b7434e6bdb588c7ef55706ff8904cb7fd4c57",
         "version" : "3.31.4"
@@ -58,7 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RunanywhereAI/runanywhere-sdks.git",
       "state" : {
-        "revision" : "fe6adea31dcf91fb2315a0406edcd2dca4d71370"
+        "revision" : "435682a4f8216a450b6525376973528400e56ae6",
+        "version" : "0.20.16"
       }
     },
     {
@@ -172,7 +175,7 @@
     {
       "identity" : "swift-transformers",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/huggingface/swift-transformers.git",
+      "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
         "revision" : "2fa33e1f5e7131a7fc64c28e6d161dcec0d24820",
         "version" : "1.3.3"

@@ -43,30 +43,9 @@ let package = Package(
         //   - RunAnywhereMLX (Apple MLX)
         //   - RunAnywhereNeuRT (Apple Neural Engine)
         //
-        // WHY `revision:` AND NOT `from: "0.20.15"`
-        // -----------------------------------------
-        // The v0.20.15 SDK manifest pins mlx-swift and mlx-audio-swift by git
-        // revision (upstream has no Swift 6.2-compatible tag yet). SwiftPM
-        // refuses to resolve *any* version-based requirement against a package
-        // whose manifest carries revision-pinned dependencies:
-        //
-        //   error: package 'runanywhere-sdks' is required using a
-        //          stable-version but 'runanywhere-sdks' depends on an
-        //          unstable-version package 'mlx-swift'
-        //
-        // Mirroring those revisions in this root manifest does NOT lift the
-        // restriction — SwiftPM raises the incompatibility before it consults
-        // root overrides. Pinning the SDK itself by revision is therefore the
-        // only remote-only option. The revision below is the exact commit that
-        // tag v0.20.15 points at, so this is byte-identical to the release and
-        // still downloads the checksum-verified XCFramework archives from
-        // https://github.com/RunanywhereAI/runanywhere-sdks/releases/tag/v0.20.15
-        //
-        // Switch back to `from: "<version>"` once the SDK ships a release whose
-        // manifest has no revision-pinned dependencies.
         .package(
             url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
-            revision: "fe6adea31dcf91fb2315a0406edcd2dca4d71370" // tag v0.20.15
+            from: "0.20.16"
         ),
     ],
     targets: [

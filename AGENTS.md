@@ -567,11 +567,12 @@ tablet, and desktop scaling.
 |---|---|
 | `scripts/build_and_run_ios_sample.sh` | Resolve, build, and deploy to simulator, device, or Mac |
 | `scripts/verify.sh` | Local gate: resolves the remote SDK release, runs a full `xcodebuild` |
-| `scripts/smoke.sh` | Greps sources for SDK call patterns without compiling |
+| `scripts/smoke.sh` | Greps sources for SDK call patterns and asserts the Parakeet CTC catalog policy, without compiling. Gated in CI. |
 
 | File | Purpose |
 |---|---|
-| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-sdks` at `from: "0.20.17"`, giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX. The Xcode project mirrors it with `upToNextMajorVersion` from the same version. |
+| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-sdks` at `from: "0.20.17"`, giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX, RunAnywhereNeuRT. The Xcode project mirrors it with `upToNextMajorVersion` from the same version. Its `RunAnywhereAITests` testTarget must point at `RunAnywhereAIUnitTests/`, not the XCUITest bundle. |
+| `Package.resolved` | Committed record of the resolved version and commit. CI fails if `swift package resolve` leaves it dirty, so commit it whenever the dependency moves. |
 | `Info.plist` | URL scheme `runanywhere`, `audio` background mode, Live Activities |
 | `RunAnywhereAI.entitlements` | macOS sandbox, camera, microphone, network, app group |
 | `Resources/RunAnywhereConfig-Debug.plist` | Dev API URL, debug logging, 30s timeout |

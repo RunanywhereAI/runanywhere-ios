@@ -47,6 +47,11 @@ playground.xcworkspace
 # hence it is not needed unless you have added a package configuration file to your project
 # .swiftpm
 
+# Xcode regenerates its own copy of Package.resolved inside the project's
+# workspace. The tracked, authoritative pin file is ./Package.resolved at the
+# repo root — ignore this one so the two cannot drift apart.
+RunAnywhereAI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
 .build/
 .build-*/
 

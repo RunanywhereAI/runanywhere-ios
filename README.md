@@ -51,10 +51,17 @@ swift package resolve
 | `RunAnywhereLlamaCPP` | llama.cpp backend: LLM, VLM |
 | `RunAnywhereONNX` | Sherpa-ONNX backend: STT, TTS, VAD |
 | `RunAnywhereMLX` | Apple MLX backend, physical device or native macOS |
+| `RunAnywhereNeuRT` | Apple Neural Engine backend, registered behind `#if canImport(NeuRTRuntime)` |
 
-To take a newer SDK release, bump the version in `Package.swift` and in the Xcode project's
-package reference, then resolve again. If resolution misbehaves, use File, Packages, Reset
-Package Caches first.
+`from:` is a version range, not a revision pin: it accepts every release up to the next
+major. `Package.resolved` records the exact version and commit that resolve selected, and
+it is committed — CI fails if it disagrees with the manifest, so commit it whenever the
+dependency moves.
+
+To take a newer SDK release within the same major, run `swift package update` and commit
+the refreshed `Package.resolved`. To *require* a newer minimum, bump the version in
+`Package.swift` and in the Xcode project's package reference, then resolve again. If
+resolution misbehaves, use File, Packages, Reset Package Caches first.
 
 ## Build and run
 
@@ -71,14 +78,37 @@ Open `RunAnywhereAI.xcodeproj` and press ⌘R, or:
 
 Runtime logs: filter Console.app on `subsystem:com.runanywhere.RunAnywhereAI`.
 
+## Tests
+
+Unit tests live in `RunAnywhereAIUnitTests/` and build into the `RunAnywhereAITests`
+target; the XCUITest launch test lives in `RunAnywhereAIUITests/`. Both need a booted
+simulator:
+
+```bash
+xcodebuild test \
+  -project RunAnywhereAI.xcodeproj \
+  -scheme RunAnywhereAI \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:RunAnywhereAITests
+```
+
+Drop `-only-testing:` to run the UI test as well.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pushes and pull requests against `main`. It checks out a
 clean clone on `macos-latest` (the macOS 26 arm64 image, the line carrying Xcode 26, which
-`swift-tools-version: 6.2` requires), resolves the SDK remotely to prove no monorepo checkout
-is needed, and builds the `RunAnywhereAI` scheme for `generic/platform=iOS Simulator`, which
-pulls in the keyboard and Live Activity extensions. Signing is off, since a simulator build
-needs no identity and hosted runners have no `DEVELOPMENT_TEAM`.
+`swift-tools-version: 6.2` requires), then:
+
+1. resolves the SDK remotely, to prove no monorepo checkout is needed, and fails if the
+   resolve left `Package.resolved` dirty (i.e. the committed pin was stale);
+2. builds the `RunAnywhereAI` scheme for `generic/platform=iOS Simulator`, which pulls in
+   the keyboard and Live Activity extensions;
+3. runs `-only-testing:RunAnywhereAITests` on a booted simulator;
+4. runs `./scripts/smoke.sh`.
+
+Signing is off, since a simulator build needs no identity and hosted runners have no
+`DEVELOPMENT_TEAM`.
 
 ## Features
 

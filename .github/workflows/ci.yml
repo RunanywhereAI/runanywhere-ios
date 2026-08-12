@@ -37,12 +37,25 @@ jobs:
           swift --version
 
       # The point of this repo: the SDK is consumed 100% remotely. Package.swift
-      # pins github.com/RunanywhereAI/runanywhere-sdks by revision
-      # fe6adea31dcf91fb2315a0406edcd2dca4d71370 (== tag v0.20.15), and SwiftPM
-      # downloads the checksum-verified XCFramework artifacts during resolve.
+      # requires github.com/RunanywhereAI/runanywhere-sdks as a version range
+      # (`from: "0.20.17"`, mirrored in the .xcodeproj as upToNextMajorVersion),
+      # and SwiftPM downloads the checksum-verified XCFramework artifacts during
+      # resolve. Package.resolved records the exact version and commit selected.
       # If this step fails, remote consumption is broken — that is the signal.
       - name: Resolve SwiftPM dependencies (remote SDK release)
         run: swift package resolve
+
+      # Package.resolved is committed, so it must agree with the manifest. A
+      # dirty file here means someone changed the requirement without
+      # re-resolving — exactly how it drifted to 0.20.16 while both manifests
+      # said 0.20.17.
+      - name: Check Package.resolved is up to date
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- Package.resolved; then
+            echo "::error::Package.resolved is stale — run 'swift package resolve' and commit it."
+            exit 1
+          fi
 
       - name: Resolve Xcode project package dependencies
         run: |
@@ -71,3 +84,30 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build
+
+      # The unit tests need a concrete booted simulator, not the generic
+      # destination used for the build above. This step is why the badge means
+      # something: the RunAnywhereAITests target was previously wired to a
+      # directory that does not exist, so it compiled zero test files and every
+      # green run proved nothing.
+      - name: Unit tests
+        run: |
+          set -euo pipefail
+          device="$(xcrun simctl list devices available --json |
+            python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in sorted(d.items(), reverse=True) if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")"
+          echo "Testing on simulator ${device}"
+          xcodebuild test \
+            -project RunAnywhereAI.xcodeproj \
+            -scheme RunAnywhereAI \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${device}" \
+            -only-testing:RunAnywhereAITests \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      # Advertised in the README but never wired in, which is how it rotted to
+      # a red exit on stale catalog literals.
+      - name: Static smoke preflight
+        run: ./scripts/smoke.sh

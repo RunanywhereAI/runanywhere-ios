@@ -62,6 +62,13 @@ let package = Package(
                 .product(name: "RunAnywhereONNX", package: "runanywhere-sdks"),
                 .product(name: "RunAnywhereLlamaCPP", package: "runanywhere-sdks"),
                 .product(name: "RunAnywhereMLX", package: "runanywhere-sdks"),
+
+                // Apple Neural Engine backend. RunAnywhereAIApp.swift registers
+                // it behind `#if canImport(NeuRTRuntime)`, so leaving it out
+                // does not fail the build — it silently compiles the ANE
+                // backend out. Keep this in sync with the .xcodeproj, which
+                // also declares RunAnywhereNeuRT on the app target.
+                .product(name: "RunAnywhereNeuRT", package: "runanywhere-sdks"),
             ],
             path: "RunAnywhereAI",
             exclude: [
@@ -71,10 +78,13 @@ let package = Package(
                 "RunAnywhereAI.entitlements"
             ]
         ),
+        // The unit tests. `path` must point at RunAnywhereAIUnitTests — the
+        // XCUITest bundle in RunAnywhereAIUITests/ drives a launched app and
+        // cannot run under `swift test`.
         .testTarget(
             name: "RunAnywhereAITests",
             dependencies: ["RunAnywhereAI"],
-            path: "RunAnywhereAIUITests"
+            path: "RunAnywhereAIUnitTests"
         )
     ]
 )

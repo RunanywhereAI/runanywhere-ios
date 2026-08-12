@@ -13,30 +13,65 @@ grep -R -E "RunAnywhere\.(initialize|registerModel|downloadModel|loadModel|gener
 
 grep -R -E "Voice|Pipeline|RAG|rag|cancelGeneration" RunAnywhereAI >/dev/null
 
-echo "==> Checking exact Parakeet CTC transform catalog policy"
+echo "==> Checking Parakeet CTC catalog policy"
+# This check asserts the POLICY, not a snapshot of the current pin.
+#
+# It used to hardcode the HF revision and the per-file SHA-256 digests. Those
+# are exactly the values that change whenever the model is re-exported, so the
+# check went red on a legitimate catalog update (and stayed red, because it is
+# not wired into CI). It also asserted a `metadataPayload` byte array that no
+# longer exists — the metadata_props patching moved server-side into the
+# RunAnywhere re-export, so that assertion could never pass again.
+#
+# What actually matters, and what is checked below:
+#   1. the model is still registered under its canonical id;
+#   2. it is sourced from the RunAnywhere re-export, NOT the upstream
+#      OpenVoiceOS export, which omits three metadata_props entries Sherpa
+#      requires and therefore cannot load;
+#   3. the source is pinned to an immutable 40-hex commit, never a mutable
+#      branch like `main`;
+#   4. both required files are declared, each with a size and a SHA-256, so a
+#      silent content swap is caught at download time;
+#   5. the registration declares a memory requirement and a download size.
 catalog_source="RunAnywhereAI/Core/Services/ModelCatalogBootstrap.swift"
-catalog_literals=(
-    "sherpa-nemo-parakeet-ctc-1.1b-int8"
-    "3ca664a2f106622d599052b4e4ecee5fdfc7e2e5"
-    "a16056c0a0d8df38c7b57cb019062df116e9e565203c6f25d6ea0c0c1122c84d"
-    "62f73c17a5301c048c7273cf24ef1cd0c3621d3625c5415fbafe5633d7bf2f98"
-    "ed16e1a4e3a3aa379138c0b1888e5d49f993c9d512b2be4d46e90a87afd54921"
-    "filename: \"tokens.txt\""
-    "memoryRequirement: 2_000_000_000"
-    "downloadSize: 1_110_024_519"
-)
-for literal in "${catalog_literals[@]}"; do
-    grep -F -- "${literal}" "${catalog_source}" >/dev/null
+parakeet_repo="huggingface.co/runanywhere/sherpa-onnx-nemo-parakeet-ctc-1.1b-int8"
+
+fail() { echo "smoke: $*" >&2; exit 1; }
+
+grep -F -q -- 'id: "sherpa-nemo-parakeet-ctc-1.1b-int8"' "${catalog_source}" ||
+    fail "canonical Parakeet CTC model id is no longer registered"
+
+# Every assertion below is scoped to the parakeetCTCSherpaFiles block. Checking
+# against the whole file would let another model's pinned revision satisfy the
+# check while Parakeet itself sat unpinned.
+parakeet_block="$(sed -n '/private static let parakeetCTCSherpaFiles/,/^[[:space:]]*}()/p' "${catalog_source}")"
+[ -n "${parakeet_block}" ] || fail "could not locate parakeetCTCSherpaFiles in ${catalog_source}"
+
+printf '%s' "${parakeet_block}" | grep -F -q -- "${parakeet_repo}" ||
+    fail "Parakeet CTC no longer points at the patched RunAnywhere re-export (${parakeet_repo})"
+
+# The base URL must end in /resolve/<40-hex>, never /resolve/main.
+printf '%s' "${parakeet_block}" | grep -Eq '"[0-9a-f]{40}"' ||
+    fail "Parakeet CTC source is not pinned to an immutable 40-hex revision"
+
+for required_file in "model.int8.onnx" "tokens.txt"; do
+    printf '%s' "${parakeet_block}" | grep -F -q -- "filename: \"${required_file}\"" ||
+        fail "Parakeet CTC no longer declares ${required_file}"
 done
 
-metadata_hex="$({
-    sed -n '/let metadataPayload: \[UInt8\] = \[/,/^[[:space:]]*\]/p' "${catalog_source}" |
-        grep -Eo '0x[0-9a-f]{2}' |
-        sed 's/^0x//' |
-        tr -d '\n'
-} || true)"
-expected_metadata_hex="72120a0a766f6361625f73697a6512043130323572170a1273756273616d706c696e675f666163746f72120138721d0a0e6e6f726d616c697a655f74797065120b7065725f66656174757265"
-test "${metadata_hex}" = "${expected_metadata_hex}"
+checksum_count="$(printf '%s' "${parakeet_block}" | grep -Ec '"[0-9a-f]{64}"' || true)"
+[ "${checksum_count}" -ge 2 ] ||
+    fail "expected a SHA-256 for each Parakeet CTC file, found ${checksum_count}"
+
+size_count="$(printf '%s' "${parakeet_block}" | grep -Ec 'sizeBytes: [0-9_]+' || true)"
+[ "${size_count}" -ge 2 ] ||
+    fail "expected a sizeBytes for each Parakeet CTC file, found ${size_count}"
+
+registration="$(sed -n '/id: "sherpa-nemo-parakeet-ctc-1.1b-int8"/,/^[[:space:]]*)$/p' "${catalog_source}")"
+printf '%s' "${registration}" | grep -Eq 'memoryRequirement: [0-9_]+' ||
+    fail "Parakeet CTC registration is missing memoryRequirement"
+printf '%s' "${registration}" | grep -Eq 'downloadSize: [0-9_]+' ||
+    fail "Parakeet CTC registration is missing downloadSize"
 
 if [ "${RUN_BUILD_GATES:-0}" = "1" ]; then
     echo "==> Running full iOS verify gates"

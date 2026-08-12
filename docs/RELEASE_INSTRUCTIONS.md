@@ -1,10 +1,10 @@
-# RunAnywhereAI App Store Release Guide
+# RunAnywhereAI App Store release guide
 
-This guide covers iOS and macOS releases of the shared `RunAnywhereAI` Xcode
-target. It prepares and validates local archives for App Store Connect. Upload
-or submission is a separate, explicit action.
+Covers iOS and macOS releases of the shared `RunAnywhereAI` Xcode target: preparing and
+validating local archives for App Store Connect. Upload and submission are separate,
+explicit actions. Paths are relative to the repository root.
 
-## Release Invariants
+## Release invariants
 
 - Build with the current App Store-required Xcode version. Check
   [Apple's upcoming requirements](https://developer.apple.com/news/upcoming-requirements/)
@@ -18,7 +18,7 @@ or submission is a separate, explicit action.
   release notes.
 - Do not upload until all archive checks in this guide pass.
 
-## Production Configuration
+## Production configuration
 
 `RunAnywhereAI/App/RunAnywhereAIApp.swift` owns the credential selection flow:
 
@@ -46,9 +46,9 @@ test -f "$APP/Contents/Resources/RunAnywhereConfig-Release.plist" || \
   test -f "$APP/RunAnywhereConfig-Release.plist"
 ```
 
-## Version And Platform Preflight
+## Version and platform preflight
 
-From `examples/ios/RunAnywhereAI/`:
+From the repository root:
 
 ```bash
 PROJECT="RunAnywhereAI.xcodeproj"
@@ -67,7 +67,7 @@ Confirm:
 - `IPHONEOS_DEPLOYMENT_TARGET` is `17.5`.
 - `MACOSX_DEPLOYMENT_TARGET` is `14.5`.
 
-## App Store Screenshots
+## App Store screenshots
 
 Apple accepts one to ten screenshots per device family. Screenshots must show
 the real app experience and use an accepted pixel size. Confirm current values
@@ -102,7 +102,7 @@ The recommended iPhone set uses real simulator evidence from llama.cpp LFM2
 as a supported runtime, but do not present it as tested evidence unless it is
 separately verified for that build.
 
-## iOS Build And Archive
+## iOS build and archive
 
 The iOS archive consumes immutable XCFrameworks whose metadata already declares
 the canonical `MinimumOSVersion` of 17.5.
@@ -139,7 +139,7 @@ xcodebuild \
 open -a Xcode "$ARCHIVE"
 ```
 
-## macOS Build And Archive
+## macOS build and archive
 
 The Mac App Store build must include App Sandbox, Hardened Runtime, the app
 privacy manifest, and the production configuration. The project supplies these
@@ -170,7 +170,7 @@ An archive stored elsewhere may not appear automatically in Organizer. Put it
 under `~/Library/Developer/Xcode/Archives/YYYY-MM-DD/` or open the `.xcarchive`
 directly with Xcode.
 
-## Archive Validation
+## Archive validation
 
 Set `ARCHIVE` to the new archive, then locate the app:
 
@@ -208,7 +208,7 @@ camera, microphone, outbound network, and user-selected file access. A locally
 created development archive can contain `get-task-allow`; the App Store export
 must be distribution-signed and must not retain it.
 
-## Native ABI Release Gate
+## Native ABI release gate
 
 The linked binary must export every C symbol referenced by the Swift SDK.
 Failure here causes startup errors such as:
@@ -217,9 +217,14 @@ Failure here causes startup errors such as:
 Native proto ABI is not exported by the linked RACommons binary: rac_sdk_init_phase1_proto
 ```
 
-Run this against either the iOS or macOS archived binary. The expected set is
-derived from the products actually linked on that platform: iOS links core,
-llama.cpp, ONNX/Sherpa, and MLX; macOS currently links core and MLX.
+Run this against either the iOS or macOS archived binary. The expected set is derived from
+the source directories listed below.
+
+The Xcode target links five SDK products on both platforms: `RunAnywhere`,
+`RunAnywhereLlamaCPP`, `RunAnywhereONNX`, `RunAnywhereMLX`, and `RunAnywhereNeuRT`. The
+branches below predate that: the macOS branch audits only core and MLX, and neither branch
+scans `NeuRTRuntime`. Widening them makes the gate stricter, so do it as a deliberate change
+with an archive to test against, not silently during a release.
 
 ```bash
 nm -gjU "$BIN" 2>/dev/null \
@@ -228,14 +233,14 @@ nm -gjU "$BIN" 2>/dev/null \
   | sort -u > /tmp/runanywhere_archive_exported_symbols.txt
 
 # `swift package resolve` places the SDK sources here. Xcode archives resolve
-# into DerivedData instead — override with
+# into DerivedData instead, so override with
 # SDK_CHECKOUT=<path-to-runanywhere-sdks-checkout> when auditing those.
 SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-sdks}"
 
 if [[ "$BIN" == */Contents/MacOS/* ]]; then
   SRC_DIRS=(
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/RunAnywhere"
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/MLXRuntime"
+    "$SDK_CHECKOUT/bindings/swift/Sources/RunAnywhere"
+    "$SDK_CHECKOUT/bindings/swift/Sources/MLXRuntime"
   )
   REQUIRED_SYMBOLS=(
     rac_proto_buffer_free
@@ -249,10 +254,10 @@ if [[ "$BIN" == */Contents/MacOS/* ]]; then
   )
 else
   SRC_DIRS=(
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/RunAnywhere"
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/LlamaCPPRuntime"
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/ONNXRuntime"
-    "$SDK_CHECKOUT/sdk/runanywhere-swift/Sources/MLXRuntime"
+    "$SDK_CHECKOUT/bindings/swift/Sources/RunAnywhere"
+    "$SDK_CHECKOUT/bindings/swift/Sources/LlamaCPPRuntime"
+    "$SDK_CHECKOUT/bindings/swift/Sources/ONNXRuntime"
+    "$SDK_CHECKOUT/bindings/swift/Sources/MLXRuntime"
   )
   REQUIRED_SYMBOLS=(
     rac_proto_buffer_free
@@ -282,20 +287,20 @@ rg -No '"(rac|ra_mlx)_[A-Za-z0-9_]+"' "${SRC_DIRS[@]}" --glob '*.swift' \
 # without this filter it reports a symbol that is CORRECTLY absent and the gate
 # fails on every good archive.
 #
-#   ra_mlx_metal_resource_anchor — MLXRuntime/MLX.swift, inside
+#   ra_mlx_metal_resource_anchor lives in MLXRuntime/MLX.swift, inside
 #   `#if RUNANYWHERE_MLX_DISTRIBUTION`. That flag is set only for the CocoaPods
 #   distribution build (Package.swift keys it off
 #   RUNANYWHERE_BUILD_MLX_DISTRIBUTION_FRAMEWORK); a normal SwiftPM archive uses
 #   mlx-swift's own resource bundle and never compiles the declaration.
 #
 # Add to this list only for a symbol you have confirmed is guarded out of THIS
-# archive's configuration — never to silence a genuinely missing export.
+# archive's configuration, never to silence a genuinely missing export.
 #
 # THE FILTER IS PER-CONFIGURATION, and that is the whole point: in the CocoaPods
 # distribution archive `RUNANYWHERE_MLX_DISTRIBUTION` IS set, so
 # ra_mlx_metal_resource_anchor MUST be exported there. Filtering it
 # unconditionally would let a genuinely missing export pass the audit in exactly
-# the build that needs it — the failure this gate exists to catch. So the
+# the build that needs it, which is the failure this gate exists to catch. So the
 # exclusion applies only to a SwiftPM archive; a distribution archive filters
 # nothing and fails on the missing symbol.
 ARCHIVE_FLAVOR="${RUNANYWHERE_ARCHIVE_FLAVOR:-swiftpm}"   # swiftpm | distribution
@@ -306,7 +311,7 @@ case "$ARCHIVE_FLAVOR" in
     )
     ;;
   distribution)
-    # Nothing is guarded out of this configuration — audit the full expected set.
+    # Nothing is guarded out of this configuration: audit the full expected set.
     PACKAGING_ONLY_SYMBOLS=()
     ;;
   *)
@@ -342,11 +347,11 @@ test ! -s /tmp/runanywhere_missing_swift_native_symbols.txt
 The final command must pass. If it fails, rebuild the native XCFrameworks and
 fix the Release linker/export settings before uploading.
 
-## Organizer Validation And Upload
+## Organizer validation and upload
 
 1. Open the archive in Xcode Organizer.
-2. Select **Validate App** and resolve every blocking issue.
-3. Select **Distribute App > App Store Connect > Upload** only after approval
+2. Select Validate App and resolve every blocking issue.
+3. Select Distribute App, App Store Connect, Upload only after approval
    to upload.
 4. In App Store Connect, attach the correct build, screenshots, release notes,
    privacy answers, and export-compliance answers.
@@ -364,7 +369,7 @@ xcodebuild -exportArchive \
 
 ## Troubleshooting
 
-### Archive Is Missing From Organizer
+### Archive is missing from Organizer
 
 Confirm the archive is under Xcode's standard folder and open it directly:
 
@@ -373,25 +378,25 @@ find "$HOME/Library/Developer/Xcode/Archives" -name '*.xcarchive' -maxdepth 3 -p
 open -a Xcode "$ARCHIVE"
 ```
 
-### Invalid Minimum OS Version
+### Invalid minimum OS version
 
 Rebuild the canonical XCFrameworks; do not mutate DerivedData. Confirm the app
 and every embedded framework declare the expected deployment floor.
 
-### Missing Native Proto ABI
+### Missing native proto ABI
 
 Do not retry or upload the same archive. Run the native ABI gate, rebuild the
 XCFrameworks, and confirm the Release target still uses `-all_load`, the
 exported-symbols list, and `STRIP_STYLE = non-global`.
 
-### Signing Or Export Failure
+### Signing or export failure
 
 Confirm the Apple Developer account can manage signing and has a valid Apple
 Distribution certificate and App Store provisioning profile for
 `com.runanywhere.RunAnywhere`. A development-signed archive is sufficient for
 local validation but not for the final App Store export.
 
-## Final Checklists
+## Final checklists
 
 ### iOS
 

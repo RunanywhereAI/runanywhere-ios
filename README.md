@@ -1,7 +1,7 @@
-# RunAnywhere AI — iOS Example
+# RunAnywhere AI iOS and macOS example
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RunanywhereAI/runanywhere-sdks/main/examples/logo.svg" alt="RunAnywhere Logo" width="120"/>
+  <img src="https://raw.githubusercontent.com/RunanywhereAI/runanywhere-sdks/main/docs/logo.svg" alt="RunAnywhere" width="120"/>
 </p>
 
 <p align="center">
@@ -10,215 +10,128 @@
   </a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-iOS%2017.5%2B-000000?style=flat-square&logo=apple&logoColor=white" alt="iOS 17.5+" />
-  <img src="https://img.shields.io/badge/Platform-macOS%2014.5%2B-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 14.5+" />
-  <img src="https://img.shields.io/badge/Swift-6.2%2B-FA7343?style=flat-square&logo=swift&logoColor=white" alt="Swift 6.2+" />
-  <img src="https://img.shields.io/badge/Xcode-26%2B-147EFB?style=flat-square&logo=xcode&logoColor=white" alt="Xcode 26+" />
-  <img src="https://img.shields.io/badge/License-RunAnywhere-blue?style=flat-square" alt="RunAnywhere License" />
-</p>
-
-**A production-ready reference app for the [RunAnywhere Swift SDK](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/sdk/runanywhere-swift/).** LLM chat, speech, vision, voice agents, RAG, benchmarks, and model management—privacy-first and offline-capable on iPhone, iPad, and Mac.
-
----
+A reference app for the [RunAnywhere Swift SDK](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/bindings/swift/README.md):
+LLM chat, speech, vision, voice agents, RAG, benchmarks, and model management, running
+on-device on iPhone, iPad, and Mac.
 
 ## Requirements
 
 | Item | Minimum |
-|------|---------|
-| **Xcode** | 26+ with Swift 6.2 and iOS 17.5+ simulator runtimes |
-| **Command Line Tools** | Selected in Xcode → Settings → Locations |
-| **Disk space** | Several GB for the downloaded SDK artifacts and AI models |
-| **Device** | Apple Silicon recommended (physical device for MLX and best LLM performance) |
-
----
+|---|---|
+| Xcode | 26+, with Swift 6.2 and iOS 17.5 simulator runtimes |
+| Platforms | iOS 17.5, macOS 14.5 |
+| Command line tools | Selected in Xcode, Settings, Locations |
+| Disk | Several GB for SDK artifacts and models |
+| Device | Apple Silicon recommended; MLX needs a physical device or native macOS |
 
 ## Setup
 
-> **This sample consumes the RunAnywhere Swift SDK entirely from its published GitHub release.** There is no monorepo checkout to build and no XCFramework to stage — SwiftPM downloads the checksum-verified native archives during resolve.
-
-### 1. Get the example
+The SDK comes entirely from its published GitHub release. There is no monorepo checkout to
+build and no XCFramework to stage: SwiftPM downloads the checksum-verified native archives
+during resolve.
 
 ```bash
 git clone https://github.com/RunanywhereAI/runanywhere-ios.git
 cd runanywhere-ios
+swift package resolve
 ```
 
-### 2. Install the SDK (nothing to do — SwiftPM does it)
-
-`Package.swift` declares one dependency, and the Xcode project mirrors it. There
-is no local path, no `RUNANYWHERE_USE_LOCAL_NATIVES`, and no XCFramework to copy:
+`Package.swift` declares one dependency, and the Xcode project mirrors it:
 
 ```swift
 .package(
     url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
-    revision: "fe6adea31dcf91fb2315a0406edcd2dca4d71370" // tag v0.20.15
+    from: "$LATEST-VERSION"
 )
 ```
 
 | Product | Role |
 |---|---|
-| `RunAnywhere` | Core SDK (always required) |
-| `RunAnywhereLlamaCPP` | LlamaCPP backend — LLM, VLM |
-| `RunAnywhereONNX` | Sherpa-ONNX backend — STT, TTS, VAD |
-| `RunAnywhereMLX` | Apple MLX backend (physical device / native macOS) |
+| `RunAnywhere` | Core SDK, always required |
+| `RunAnywhereLlamaCPP` | llama.cpp backend: LLM, VLM |
+| `RunAnywhereONNX` | Sherpa-ONNX backend: STT, TTS, VAD |
+| `RunAnywhereMLX` | Apple MLX backend, physical device or native macOS |
 
-The pin is a **revision, not a version range**, because the v0.20.15 SDK manifest
-itself pins `mlx-swift` / `mlx-audio-swift` by revision and SwiftPM refuses to mix
-a stable-version requirement with an unstable-version dependency. That commit is
-exactly what tag `v0.20.15` points at, so resolve downloads the same
-checksum-verified XCFramework archives as the published release. See the comment
-block in `Package.swift` for the full rationale.
+To take a newer SDK release, bump the version in `Package.swift` and in the Xcode project's
+package reference, then resolve again. If resolution misbehaves, use File, Packages, Reset
+Package Caches first.
 
-### 3. Resolve packages and build
+## Build and run
 
-```bash
-swift package resolve
-
-xcodebuild \
-  -project RunAnywhereAI.xcodeproj \
-  -scheme RunAnywhereAI \
-  -resolvePackageDependencies
-
-xcodebuild \
-  -project RunAnywhereAI.xcodeproj \
-  -scheme RunAnywhereAI \
-  -configuration Debug \
-  -sdk iphonesimulator \
-  -destination 'generic/platform=iOS Simulator' \
-  build
-```
-
-### 4. Run the app
-
-**Option A — Xcode:** Open `RunAnywhereAI.xcodeproj`, select a simulator or device, press **Run** (⌘R).
-
-**Option B — Script:**
+Open `RunAnywhereAI.xcodeproj` and press ⌘R, or:
 
 ```bash
 ./scripts/build_and_run_ios_sample.sh simulator "iPhone 16 Pro"
-# Physical device:
 ./scripts/build_and_run_ios_sample.sh device
-# macOS:
 ./scripts/build_and_run_ios_sample.sh mac
 ```
 
-**Option C — Verify gate:**
+`./scripts/verify.sh` runs the same gate as CI (resolve plus a full `xcodebuild`).
+`./scripts/smoke.sh` greps the sources for SDK call patterns without compiling.
 
-```bash
-./scripts/verify.sh
-```
-
-### Moving to a newer SDK release
-
-The SDK dependency is pinned in `Package.swift` (and mirrored in the Xcode
-project) to the exact commit behind a published tag. To take a newer release,
-update the revision in both places and resolve again.
-
-| Change | Action |
-|--------|--------|
-| New SDK release | Update the pinned revision in `Package.swift` + `RunAnywhereAI.xcodeproj`, then resolve |
-| Stale package errors | **File → Packages → Reset Package Caches**, then resolve again |
-
----
+Runtime logs: filter Console.app on `subsystem:com.runanywhere.RunAnywhereAI`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request.
-It is the same clean-clone gate as `./scripts/verify.sh`:
-
-1. `macos-latest` (macOS 26 arm64 — the image line that carries Xcode 26; Swift 6.2
-   is required by `swift-tools-version: 6.2`), newest installed Xcode selected.
-2. `swift package resolve` — proves the SDK resolves **remotely**, from the
-   published release, with no monorepo checkout on the runner.
-3. `xcodebuild build` for `generic/platform=iOS Simulator` on the **RunAnywhereAI**
-   app scheme, which pulls in `RunAnywhereKeyboard` and
-   `RunAnywhereActivityExtensionExtension` as implicit dependencies.
-
-Code signing is off in CI (`CODE_SIGNING_ALLOWED=NO`) — a simulator build needs no
-identity, and hosted runners have no access to `DEVELOPMENT_TEAM`.
-
----
+`.github/workflows/ci.yml` runs on pushes and pull requests against `main`. It checks out a
+clean clone on `macos-latest` (the macOS 26 arm64 image, the line carrying Xcode 26, which
+`swift-tools-version: 6.2` requires), resolves the SDK remotely to prove no monorepo checkout
+is needed, and builds the `RunAnywhereAI` scheme for `generic/platform=iOS Simulator`, which
+pulls in the keyboard and Live Activity extensions. Signing is off, since a simulator build
+needs no identity and hosted runners have no `DEVELOPMENT_TEAM`.
 
 ## Features
 
 | Feature | Description |
-|---------|-------------|
-| **AI Chat** | Streaming LLM with thinking mode, tool calling, and LoRA adapters |
-| **Speech-to-Text** | Batch and live transcription (Sherpa-ONNX / Whisper) |
-| **Text-to-Speech** | Neural Piper voices |
-| **Voice Assistant** | Full STT → LLM → TTS pipeline with particle UI |
-| **Vision (VLM)** | Camera and photo-library image understanding |
-| **RAG** | PDF/document ingestion and on-device Q&A |
-| **Benchmarks** | Deterministic LLM, STT, TTS, and VLM performance tests |
-| **Voice Keyboard** | iOS keyboard extension with dictation flow |
-| **Model Management** | Download, load, storage, and deletion |
-| **Cross-Platform** | Universal iOS, iPadOS, and macOS app |
+|---|---|
+| Chat | Streaming LLM with thinking mode, tool calling, document attachments, and LoRA adapters |
+| Speech to text | Batch, live, and hybrid transcription (Sherpa-ONNX, Whisper) |
+| Text to speech | Neural Piper voices |
+| Talk | Full STT, LLM, TTS voice agent with a Metal particle UI |
+| Vision | Camera and photo-library image understanding, including a live mode |
+| Diarization and segmentation | Who spoke when; labelled photo regions |
+| Computer use | The model reads a screenshot and acts on it |
+| Connect | Host a model on a Mac and share it with your other devices |
+| Benchmarks | Deterministic LLM, STT, TTS, and VLM performance tests |
+| Voice keyboard | iOS keyboard extension with a cross-process dictation flow |
+| Model management | Download, load, storage, and deletion, plus Hugging Face import |
 
-MLX-backed models run on physical iOS devices and native macOS; the arm64 simulator build validates package and startup paths but does not execute MLX inference.
+MLX-backed models run on physical iOS devices and native macOS. The arm64 simulator build
+validates packaging and startup but does not execute MLX inference.
 
----
+## Layout
 
-## Project structure
-
-```
-RunAnywhereAI/
-├── RunAnywhereAI/
-│   ├── App/                    # Entry point, SDK init, tab shell
-│   ├── Features/               # Chat, Voice, Vision, RAG, Benchmarks, …
-│   ├── Core/                   # Design system, services, models
-│   └── Helpers/                # Markdown rendering, adaptive layout
-├── RunAnywhereKeyboard/        # Keyboard extension target
-├── RunAnywhereActivityExtension/  # Live Activity widget
-├── Package.swift               # Remote Swift SDK dependency (revision-pinned)
-├── scripts/
-│   ├── build_and_run_ios_sample.sh
-│   ├── verify.sh
-│   └── smoke.sh
-└── README.md
-```
-
-Architecture: **MVVM** with Swift Observation (`@Observable` view models), a single `RunAnywhere.*` SDK entry point, and centralized design tokens (`AppColors`, `AppTypography`, brand orange `#FF6900`).
-
----
+`RunAnywhereAI/` holds the app: `App/` (entry point and platform shells), `Features/`,
+`Core/` (design system, services, models), and `Helpers/`. `RunAnywhereKeyboard/` and
+`RunAnywhereActivityExtension/` are the two extension targets. Architecture is MVVM with
+Swift Observation, one `RunAnywhere.*` entry point per modality, and centralized design
+tokens around brand orange `#FF6900`. `AGENTS.md` has the full reference.
 
 ## Troubleshooting
 
 | Symptom | Fix |
-|---------|-----|
-| Missing XCFramework errors | The native archives ship with the SDK release — reset package caches and rerun `swift package resolve` so SwiftPM re-downloads them |
-| Package resolution failures | Reset package caches in Xcode; rerun `swift package resolve` |
-| Sandbox / derived-data issues | Clean build folder (⇧⌘K); delete DerivedData if needed |
-| MLX models unavailable | Use a physical device; MLX returns unavailable on simulator |
-| Verify script fails | Run `./scripts/verify.sh` and follow its output for the exact gate |
+|---|---|
+| Missing XCFramework errors | Reset package caches and rerun `swift package resolve` so SwiftPM re-downloads the release archives |
+| Package resolution failures | Same: reset caches, resolve again |
+| Sandbox or derived-data issues | Clean the build folder (⇧⌘K), delete DerivedData if it persists |
+| MLX unavailable | Use a physical device or native macOS; MLX reports unavailable on the simulator |
 
-Quick static check without full compile:
-
-```bash
-./scripts/smoke.sh
-```
-
-Filter runtime logs in Console.app: `subsystem:com.runanywhere.RunAnywhereAI`.
-
----
-
-## Related links
+## Links
 
 | Resource | Link |
-|----------|------|
-| **Swift SDK** | [sdk/runanywhere-swift/README.md](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/sdk/runanywhere-swift/README.md) |
-| **Android example** | [github.com/RunanywhereAI/runanywhere-android](https://github.com/RunanywhereAI/runanywhere-android) |
-| **Web example** | [github.com/RunanywhereAI/runanywhere-web](https://github.com/RunanywhereAI/runanywhere-web) |
-| **Electron example** | [github.com/RunanywhereAI/runanywhere-electron](https://github.com/RunanywhereAI/runanywhere-electron) |
-| **React Native example** | [examples/react-native/RunAnywhereAI](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/examples/react-native/RunAnywhereAI/README.md) |
-| **Flutter example** | [examples/flutter/RunAnywhereAI](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/examples/flutter/RunAnywhereAI/README.md) |
-| **App Store** | [RunAnywhere on the App Store](https://apps.apple.com/us/app/runanywhere/id6756506307) |
-| **Discord** | [discord.gg/N359FBbDVd](https://discord.gg/N359FBbDVd) |
-| **Issues** | [GitHub Issues](https://github.com/RunanywhereAI/runanywhere-sdks/issues) |
-| **Email** | founders@runanywhere.ai |
-
----
+|---|---|
+| Swift SDK | [bindings/swift](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/bindings/swift/README.md) |
+| Android example | [runanywhere-android](https://github.com/RunanywhereAI/runanywhere-android) |
+| Web example | [runanywhere-web](https://github.com/RunanywhereAI/runanywhere-web) |
+| Electron example | [runanywhere-electron](https://github.com/RunanywhereAI/runanywhere-electron) |
+| React Native example | [bindings/react-native/example](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/bindings/react-native/example/README.md) |
+| Flutter example | [bindings/flutter/example](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/bindings/flutter/example/README.md) |
+| App Store | [RunAnywhere](https://apps.apple.com/us/app/runanywhere/id6756506307) |
+| Discord | [discord.gg/N359FBbDVd](https://discord.gg/N359FBbDVd) |
+| Issues | [GitHub Issues](https://github.com/RunanywhereAI/runanywhere-ios/issues) |
+| Email | founders@runanywhere.ai |
 
 ## License
 
-This project is licensed under the RunAnywhere License (Apache 2.0 based, with additional commercial-use terms). See [LICENSE](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/LICENSE) for details.
+RunAnywhere License, Apache 2.0 based with additional commercial-use terms. See
+[LICENSE](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/LICENSE).

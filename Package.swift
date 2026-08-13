@@ -49,11 +49,13 @@ let package = Package(
         //      core, engines, and five language bindings to compile Sources/.
         //   2. From v0.20.18 the monorepo de-committed its generated trees, so
         //      its tag ships only 1 of the 42 files in
-        //      `bindings/swift/Sources/RunAnywhere/Generated/`. Building against
-        //      it fails with 73 distinct "cannot find type 'RA…' in scope"
-        //      errors (RAModelInfo, RASDKError, RARAGResult, …). The generated
-        //      sources are materialized into `runanywhere-swift` at release
-        //      time by `bindings/swift/scripts/sync-dist-repo.sh`.
+        //      `bindings/swift/Sources/RunAnywhere/Generated/` (only
+        //      Versions.swift survives). Building against it fails: CI run
+        //      31728792120 emitted 733 "cannot find type 'RA…' in scope"
+        //      errors naming 195 distinct types (RAModelInfo x38, RASDKEvent
+        //      x25, RADownloadProgress x20, …). The generated sources are
+        //      materialized into `runanywhere-swift` at release time by
+        //      `bindings/swift/scripts/sync-dist-repo.sh`.
         // The XCFramework binaryTargets still point at the checksum-verified
         // release assets on `runanywhere-sdks`; only the Swift sources move.
         //

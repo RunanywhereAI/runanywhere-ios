@@ -94,15 +94,18 @@ nm -gjU "$BIN" 2>/dev/null \
 
 # `swift package resolve` places the SDK sources here. Xcode archives resolve
 # into DerivedData instead, so override with
-# SDK_CHECKOUT=<path-to-runanywhere-sdks-checkout> when auditing those.
-# The 0.20.17 restructure moved the Swift SDK from sdk/runanywhere-swift/ to
-# bindings/swift/; an older checkout still uses the former.
-SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-sdks}"
+# SDK_CHECKOUT=<path-to-runanywhere-swift-checkout> when auditing those.
+# The dependency is the generated `runanywhere-swift` distribution, whose Swift
+# sources sit at `Sources/` — NOT the monorepo's `bindings/swift/Sources/`. A
+# checkout of `runanywhere-sdks` instead of `runanywhere-swift` needs that
+# prefix added back, and from v0.20.18 it is missing the generated proto
+# sources entirely.
+SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-swift}"
 SRC_DIRS=(
-  "$SDK_CHECKOUT/bindings/swift/Sources/RunAnywhere"
-  "$SDK_CHECKOUT/bindings/swift/Sources/LlamaCPPRuntime"
-  "$SDK_CHECKOUT/bindings/swift/Sources/ONNXRuntime"
-  "$SDK_CHECKOUT/bindings/swift/Sources/MLXRuntime"
+  "$SDK_CHECKOUT/Sources/RunAnywhere"
+  "$SDK_CHECKOUT/Sources/LlamaCPPRuntime"
+  "$SDK_CHECKOUT/Sources/ONNXRuntime"
+  "$SDK_CHECKOUT/Sources/MLXRuntime"
 )
 
 rg -No '"(rac|ra_mlx)_[A-Za-z0-9_]+"' "${SRC_DIRS[@]}" --glob '*.swift' \
@@ -571,7 +574,7 @@ tablet, and desktop scaling.
 
 | File | Purpose |
 |---|---|
-| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-sdks` at `from: "0.20.17"`, giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX, RunAnywhereNeuRT. The Xcode project mirrors it with `upToNextMajorVersion` from the same version. Its `RunAnywhereAITests` testTarget must point at `RunAnywhereAIUnitTests/`, not the XCUITest bundle. |
+| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-swift` at `from: "0.20.18"` (the Swift-only SPM distribution generated from the monorepo — the monorepo itself stopped committing `bindings/swift/Sources/RunAnywhere/Generated/` at v0.20.18 and no longer compiles as an SPM dependency), giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX, RunAnywhereNeuRT. The Xcode project mirrors it with `upToNextMajorVersion` from the same version. Its `RunAnywhereAITests` testTarget must point at `RunAnywhereAIUnitTests/`, not the XCUITest bundle. |
 | `Package.resolved` | Committed record of the resolved version and commit. CI fails if `swift package resolve` leaves it dirty, so commit it whenever the dependency moves. |
 | `Info.plist` | URL scheme `runanywhere`, `audio` background mode, Live Activities |
 | `RunAnywhereAI.entitlements` | macOS sandbox, camera, microphone, network, app group |

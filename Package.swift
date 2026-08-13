@@ -36,16 +36,32 @@ let package = Package(
         // ===================================
         // RunAnywhere SDK (published GitHub release)
         // ===================================
-        // The `runanywhere-sdks` package publishes:
+        // The `runanywhere-swift` package publishes:
         //   - RunAnywhere (core)
         //   - RunAnywhereONNX (STT/TTS/VAD)
         //   - RunAnywhereLlamaCPP (LLM)
         //   - RunAnywhereMLX (Apple MLX)
         //   - RunAnywhereNeuRT (Apple Neural Engine)
         //
+        // `runanywhere-swift` is the Swift-only SPM distribution generated from
+        // the `runanywhere-sdks` monorepo. Consume it, NOT the monorepo:
+        //   1. `.package(url: ".../runanywhere-sdks", …)` clones ~340 MB of C++
+        //      core, engines, and five language bindings to compile Sources/.
+        //   2. From v0.20.18 the monorepo de-committed its generated trees, so
+        //      its tag ships only 1 of the 42 files in
+        //      `bindings/swift/Sources/RunAnywhere/Generated/`. Building against
+        //      it fails with 73 distinct "cannot find type 'RA…' in scope"
+        //      errors (RAModelInfo, RASDKError, RARAGResult, …). The generated
+        //      sources are materialized into `runanywhere-swift` at release
+        //      time by `bindings/swift/scripts/sync-dist-repo.sh`.
+        // The XCFramework binaryTargets still point at the checksum-verified
+        // release assets on `runanywhere-sdks`; only the Swift sources move.
+        //
+        // Its tags are bare semver with NO `v` prefix, which is what `from:`
+        // needs.
         .package(
-            url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
-            from: "0.20.17"
+            url: "https://github.com/RunanywhereAI/runanywhere-swift.git",
+            from: "0.20.18"
         ),
     ],
     targets: [
@@ -53,22 +69,22 @@ let package = Package(
             name: "RunAnywhereAI",
             dependencies: [
                 // Core SDK (always needed)
-                .product(name: "RunAnywhere", package: "runanywhere-sdks"),
+                .product(name: "RunAnywhere", package: "runanywhere-swift"),
 
                 // Optional modules - pick what you need:
                 // All native backend XCFrameworks now carry macOS arm64 slices,
                 // so the shared example exposes the same portable providers on
                 // iOS and macOS instead of compiling them out on Mac.
-                .product(name: "RunAnywhereONNX", package: "runanywhere-sdks"),
-                .product(name: "RunAnywhereLlamaCPP", package: "runanywhere-sdks"),
-                .product(name: "RunAnywhereMLX", package: "runanywhere-sdks"),
+                .product(name: "RunAnywhereONNX", package: "runanywhere-swift"),
+                .product(name: "RunAnywhereLlamaCPP", package: "runanywhere-swift"),
+                .product(name: "RunAnywhereMLX", package: "runanywhere-swift"),
 
                 // Apple Neural Engine backend. RunAnywhereAIApp.swift registers
                 // it behind `#if canImport(NeuRTRuntime)`, so leaving it out
                 // does not fail the build — it silently compiles the ANE
                 // backend out. Keep this in sync with the .xcodeproj, which
                 // also declares RunAnywhereNeuRT on the app target.
-                .product(name: "RunAnywhereNeuRT", package: "runanywhere-sdks"),
+                .product(name: "RunAnywhereNeuRT", package: "runanywhere-swift"),
             ],
             path: "RunAnywhereAI",
             exclude: [

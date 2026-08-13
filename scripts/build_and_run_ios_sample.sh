@@ -249,7 +249,7 @@ main() {
 
     log_header "RunAnywhereAI Build Pipeline"
     echo "Target:       $TARGET"
-    echo "SDK source:   github.com/RunanywhereAI/runanywhere-sdks (release)"
+    echo "SDK source:   github.com/RunanywhereAI/runanywhere-swift (release)"
     echo "Skip App:     $SKIP_APP"
     echo ""
 

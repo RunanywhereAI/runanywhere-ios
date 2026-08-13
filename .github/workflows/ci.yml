@@ -37,8 +37,8 @@ jobs:
           swift --version
 
       # The point of this repo: the SDK is consumed 100% remotely. Package.swift
-      # requires github.com/RunanywhereAI/runanywhere-sdks as a version range
-      # (`from: "0.20.17"`, mirrored in the .xcodeproj as upToNextMajorVersion),
+      # requires github.com/RunanywhereAI/runanywhere-swift as a version range
+      # (`from: "0.20.18"`, mirrored in the .xcodeproj as upToNextMajorVersion),
       # and SwiftPM downloads the checksum-verified XCFramework artifacts during
       # resolve. Package.resolved records the exact version and commit selected.
       # If this step fails, remote consumption is broken — that is the signal.

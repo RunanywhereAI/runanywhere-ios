@@ -518,6 +518,30 @@ enum ModelCatalogBootstrap {
             modality: .multimodal,
             memoryRequirement: 4_000_000_000
         )
+        // A PLAIN REPO ref for the same reason as the LFM2.5-230M row above:
+        // LiquidAI publishes one precision per repo here, so the 4-bit weights
+        // sit at the repo ROOT beside config.json and tokenizer.json and
+        // appending a precision segment would 404.
+        //
+        // mlx-swift-lm 3.31.4 (the pin in Package.resolved) loads this family
+        // natively rather than by coincidence: `lfm2_vl` is a registered model
+        // type in `VLMModelFactory`, `Lfm2VlProcessor` — the `processor_class`
+        // this repo's processor_config.json declares — is a registered
+        // processor type, and the package even ships a built-in
+        // ModelConfiguration for the 1.6B sibling. This repo's config.json
+        // matches that sibling's shape: text `lfm2`, vision
+        // `siglip2_vision_model`, affine 4-bit at group size 64.
+        await registerLLM(
+            id: "mlx-lfm2.5-vl-3b-4bit",
+            name: "MLX LFM2.5-VL 3B 4bit",
+            url: "https://huggingface.co/LiquidAI/LFM2.5-VL-3B-MLX-4bit",
+            framework: .mlx,
+            modality: .multimodal,
+            // 2,388,273,220 B for the whole repo (2.37 GB of that is
+            // model.safetensors) plus KV cache, vision activations and Metal
+            // runtime overhead.
+            memoryRequirement: 3_000_000_000
+        )
         // Speaker diarization / semantic segmentation catalog rows are registered
         // under `#if canImport(ONNXRuntime)` below (ONNX Sortformer + SegFormer).
         // There is no MLX diarization/segmentation engine.
@@ -629,6 +653,31 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 600_000_000
+        )
+        // LFM2.5-VL, the current generation of the LFM2-VL row above. Q4_K_M
+        // decoder paired with the Q8_0 mmproj — the same split the Qwen2-VL,
+        // Qwen2.5-VL and Gemma 4 rows use, and the repo's smallest mmproj.
+        //
+        // This rides the vision path that already serves LFM2-VL 450M rather
+        // than a new one: the decoder GGUF declares `general.architecture =
+        // lfm2` (as the LFM2.5 text rows in this catalog do) and the mmproj
+        // declares `clip.projector_type = lfm2` under exactly the same KV
+        // schema as the 450M mmproj — only the dimensions differ (27 vision
+        // blocks at width 1152, against 12 at 768).
+        await registerMultiFile(
+            id: "lfm2.5-vl-3b-q4_k_m",
+            name: "LFM2.5-VL 3B Q4_K_M",
+            files: [
+                ("https://huggingface.co/LiquidAI/LFM2.5-VL-3B-GGUF/resolve/main/LFM2.5-VL-3B-Q4_K_M.gguf",
+                 "LFM2.5-VL-3B-Q4_K_M.gguf"),
+                ("https://huggingface.co/LiquidAI/LFM2.5-VL-3B-GGUF/resolve/main/mmproj-LFM2.5-VL-3B-Q8_0.gguf",
+                 "mmproj-LFM2.5-VL-3B-Q8_0.gguf")
+            ],
+            framework: .llamaCpp,
+            modality: .multimodal,
+            // 2,257,563,360 B of weights (1,674,454,240 decoder +
+            // 583,109,120 mmproj) plus KV cache and runtime overhead.
+            memoryRequirement: 2_800_000_000
         )
         // Fara1.5 — Computer-Use Agent profile model, mirrors the Android
         // catalog row (`ModelCatalog.kt`) so `RunAnywhere.CUA` has a

@@ -234,13 +234,13 @@ nm -gjU "$BIN" 2>/dev/null \
 
 # `swift package resolve` places the SDK sources here. Xcode archives resolve
 # into DerivedData instead, so override with
-# SDK_CHECKOUT=<path-to-runanywhere-sdks-checkout> when auditing those.
-SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-sdks}"
+# SDK_CHECKOUT=<path-to-runanywhere-swift-checkout> when auditing those.
+SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-swift}"
 
 if [[ "$BIN" == */Contents/MacOS/* ]]; then
   SRC_DIRS=(
-    "$SDK_CHECKOUT/bindings/swift/Sources/RunAnywhere"
-    "$SDK_CHECKOUT/bindings/swift/Sources/MLXRuntime"
+    "$SDK_CHECKOUT/Sources/RunAnywhere"
+    "$SDK_CHECKOUT/Sources/MLXRuntime"
   )
   REQUIRED_SYMBOLS=(
     rac_proto_buffer_free
@@ -254,10 +254,10 @@ if [[ "$BIN" == */Contents/MacOS/* ]]; then
   )
 else
   SRC_DIRS=(
-    "$SDK_CHECKOUT/bindings/swift/Sources/RunAnywhere"
-    "$SDK_CHECKOUT/bindings/swift/Sources/LlamaCPPRuntime"
-    "$SDK_CHECKOUT/bindings/swift/Sources/ONNXRuntime"
-    "$SDK_CHECKOUT/bindings/swift/Sources/MLXRuntime"
+    "$SDK_CHECKOUT/Sources/RunAnywhere"
+    "$SDK_CHECKOUT/Sources/LlamaCPPRuntime"
+    "$SDK_CHECKOUT/Sources/ONNXRuntime"
+    "$SDK_CHECKOUT/Sources/MLXRuntime"
   )
   REQUIRED_SYMBOLS=(
     rac_proto_buffer_free

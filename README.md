@@ -40,7 +40,7 @@ swift package resolve
 
 ```swift
 .package(
-    url: "https://github.com/RunanywhereAI/runanywhere-sdks.git",
+    url: "https://github.com/RunanywhereAI/runanywhere-swift.git",
     from: "$LATEST-VERSION"
 )
 ```

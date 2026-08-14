@@ -63,7 +63,7 @@ let package = Package(
         // needs.
         .package(
             url: "https://github.com/RunanywhereAI/runanywhere-swift.git",
-            from: "0.20.18"
+            from: "0.20.19"
         ),
     ],
     targets: [

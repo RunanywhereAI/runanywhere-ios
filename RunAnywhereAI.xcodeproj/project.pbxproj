@@ -1029,7 +1029,7 @@
 			repositoryURL = "https://github.com/RunanywhereAI/runanywhere-swift.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.20.18;
+				minimumVersion = 0.20.19;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

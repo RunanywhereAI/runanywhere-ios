@@ -151,6 +151,27 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 2_800_000_000,
             supportsThinking: true
         )
+        // Qwen3.8-27B, the newest dense Qwen release (unsloth-published GGUF,
+        // matching the rest of the Qwen3.x rows in this catalog).
+        await registerLLM(
+            id: "qwen3.8-27b-q4_k_m",
+            name: "Qwen3.8 27B Q4_K_M",
+            url: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 17,106,775,008 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 18_800_000_000,
+            supportsThinking: true
+        )
+        // Qwen3.6-35B-A3B (MoE, 35B total / 3B active, agentic-coding focused).
+        await registerLLM(
+            id: "qwen3.6-35b-a3b-q4_k_m",
+            name: "Qwen3.6 35B-A3B Q4_K_M",
+            url: "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 22,134,528,992 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 24_300_000_000,
+            supportsThinking: true
+        )
         // Exact P0 NVIDIA checkpoint. The pinned llama.cpp fork has native
         // `nemotron` support; this exact Q4_K_M artifact was load/inference
         // checked through rcli on macOS before being exposed in the catalog.
@@ -260,6 +281,64 @@ enum ModelCatalogBootstrap {
             url: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
             framework: .llamaCpp,
             memoryRequirement: 2_000_000_000
+        )
+        // Gemma 4 family, text-only (unsloth GGUF, no mmproj). Distinct from
+        // the Gemma 4 E2B/E4B VLM rows above (`ggml-org` repo, decoder+mmproj
+        // pairs) — those are multimodal registrations; these are plain
+        // language-only chat models, hence the "-text" suffix on the E4B id to
+        // avoid colliding with the existing multimodal
+        // "gemma-4-e4b-it-q4_k_m" id at the same quant level.
+        await registerLLM(
+            id: "gemma-4-e2b-it-q4_k_m",
+            name: "Gemma 4 E2B IT Q4_K_M",
+            url: "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 3,106,738,272 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 3_400_000_000
+        )
+        await registerLLM(
+            id: "gemma-4-e4b-it-text-q4_k_m",
+            name: "Gemma 4 E4B IT Q4_K_M",
+            url: "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 4,977,171,584 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 5_700_000_000
+        )
+        await registerLLM(
+            id: "gemma-4-12b-it-q4_k_m",
+            name: "Gemma 4 12B IT Q4_K_M",
+            url: "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 7,121,861,440 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 8_200_000_000
+        )
+        await registerLLM(
+            id: "gemma-4-26b-a4b-it-q4_k_xl",
+            name: "Gemma 4 26B-A4B IT Q4_K_XL",
+            url: "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf",
+            framework: .llamaCpp,
+            // 17,010,980,576 B of weights (MoE, 26B total / 4B active) plus KV
+            // cache and runtime overhead.
+            memoryRequirement: 18_700_000_000
+        )
+        // Largest dense Gemma 4. Two quants offered on purpose: Q4_K_M for
+        // quality, and the smaller UD-Q2_K_XL for devices that cannot fit the
+        // 4-bit weights.
+        await registerLLM(
+            id: "gemma-4-31b-it-q4_k_m",
+            name: "Gemma 4 31B IT Q4_K_M",
+            url: "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 18,323,733,440 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 20_200_000_000
+        )
+        await registerLLM(
+            id: "gemma-4-31b-it-q2_k_xl",
+            name: "Gemma 4 31B IT Q2_K_XL",
+            url: "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-UD-Q2_K_XL.gguf",
+            framework: .llamaCpp,
+            // 11,774,991,296 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 13_500_000_000
         )
         logger.info("LLM models registered")
         #endif
@@ -494,14 +573,36 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 2_400_000_000,
             supportsThinking: true
         )
-        // NOTE: The MLX Gemma 4 (E2B/E4B) checkpoints are intentionally NOT
-        // registered. Their attention layers use an asymmetric QK-norm (some
-        // layers ship `self_attn.q_norm` without a matching `self_attn.k_norm`),
-        // but mlx-swift-lm 3.31.4's `Gemma4TextAttention` unconditionally loads
-        // `self_attn.k_norm.weight` and aborts with `keyNotFound` on the first
-        // such layer — so they download fully and then fail to load. Re-enable
-        // once mlx-swift-lm makes per-layer k_norm optional. The GGUF (llama.cpp)
-        // Gemma 4 variants below load fine and remain available.
+        await registerLLM(
+            id: "mlx-qwen3.8-27b-4bit",
+            name: "MLX Qwen3.8 27B 4bit",
+            url: "https://huggingface.co/mlx-community/Qwen3.8-27B-4bit",
+            framework: .mlx,
+            // ~16,054,541,349 B for the whole repo plus KV cache and Metal
+            // runtime overhead.
+            memoryRequirement: 17_700_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "mlx-qwen3.6-35b-a3b-4bit",
+            name: "MLX Qwen3.6 35B-A3B 4bit",
+            url: "https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit",
+            framework: .mlx,
+            // ~20,402,204,271 B for the whole repo (MoE, 35B total / 3B
+            // active) plus KV cache and Metal runtime overhead.
+            memoryRequirement: 22_400_000_000,
+            supportsThinking: true
+        )
+        // NOTE: No MLX Gemma 4 checkpoint of ANY size (E2B/E4B/12B/26B-A4B/31B)
+        // is registered here. Their attention layers use an asymmetric QK-norm
+        // (some layers ship `self_attn.q_norm` without a matching
+        // `self_attn.k_norm`), but mlx-swift-lm 3.31.4's `Gemma4TextAttention`
+        // unconditionally loads `self_attn.k_norm.weight` and aborts with
+        // `keyNotFound` on the first such layer — so they download fully and
+        // then fail to load. This is architectural, not per-size, so it blocks
+        // every Gemma 4 MLX checkpoint until mlx-swift-lm makes per-layer
+        // k_norm optional. The GGUF (llama.cpp) Gemma 4 variants in the LLM
+        // section above load fine and remain available at every size.
         await registerLLM(
             id: "mlx-qwen2-vl-2b-instruct-4bit",
             name: "MLX Qwen2-VL 2B Instruct 4bit",

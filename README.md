@@ -26,9 +26,8 @@ on-device on iPhone, iPad, and Mac.
 
 ## Setup
 
-The SDK comes entirely from its published GitHub release. There is no monorepo checkout to
-build and no XCFramework to stage: SwiftPM downloads the checksum-verified native archives
-during resolve.
+There is no monorepo checkout to build and no XCFramework to stage. SwiftPM downloads the
+checksum-verified native archives during resolve.
 
 ```bash
 git clone https://github.com/RunanywhereAI/runanywhere-ios.git
@@ -41,9 +40,18 @@ swift package resolve
 ```swift
 .package(
     url: "https://github.com/RunanywhereAI/runanywhere-swift.git",
-    from: "$LATEST-VERSION"
+    from: "0.20.19"
 )
 ```
+
+`runanywhere-swift` is a Swift-only SwiftPM distribution generated from the
+`runanywhere-sdks` monorepo. Consume it rather than the monorepo: it is a few MB instead
+of a few hundred, and it carries the generated proto sources that the monorepo no longer
+commits. Its tags are bare semver with no `v` prefix, which is what `from:` needs. The
+XCFramework binary targets still point at the checksum-verified release assets on
+`runanywhere-sdks`.
+
+The five products it publishes, all of which this app links:
 
 | Product | Role |
 |---|---|
@@ -51,15 +59,15 @@ swift package resolve
 | `RunAnywhereLlamaCPP` | llama.cpp backend: LLM, VLM |
 | `RunAnywhereONNX` | Sherpa-ONNX backend: STT, TTS, VAD |
 | `RunAnywhereMLX` | Apple MLX backend, physical device or native macOS |
-| `RunAnywhereNeuRT` | Apple Neural Engine backend, registered behind `#if canImport(NeuRTRuntime)` |
+| `RunAnywhereNeuRT` | Apple Neural Engine backend |
 
-`from:` is a version range, not a revision pin: it accepts every release up to the next
-major. `Package.resolved` records the exact version and commit that resolve selected, and
-it is committed — CI fails if it disagrees with the manifest, so commit it whenever the
-dependency moves.
+Three files have to agree on the version: `Package.swift` (`from:`), the Xcode project's
+package reference (`upToNextMajorVersion` from the same minimum), and `Package.resolved`,
+which records the exact version and commit resolve selected. `Package.resolved` is
+committed and CI fails if a fresh resolve leaves it dirty.
 
 To take a newer SDK release within the same major, run `swift package update` and commit
-the refreshed `Package.resolved`. To *require* a newer minimum, bump the version in
+the refreshed `Package.resolved`. To require a newer minimum, bump the version in
 `Package.swift` and in the Xcode project's package reference, then resolve again. If
 resolution misbehaves, use File, Packages, Reset Package Caches first.
 
@@ -73,10 +81,18 @@ Open `RunAnywhereAI.xcodeproj` and press ⌘R, or:
 ./scripts/build_and_run_ios_sample.sh mac
 ```
 
-`./scripts/verify.sh` runs the same gate as CI (resolve plus a full `xcodebuild`).
-`./scripts/smoke.sh` greps the sources for SDK call patterns without compiling.
+`./scripts/verify.sh` resolves the package and runs a full simulator `xcodebuild`, which is
+the slow half of CI. `./scripts/smoke.sh` is the fast half: it greps the sources for SDK
+call patterns and checks the Parakeet CTC catalog entry, without compiling.
 
-Runtime logs: filter Console.app on `subsystem:com.runanywhere.RunAnywhereAI`.
+Runtime logs:
+
+```bash
+log stream --predicate 'subsystem CONTAINS "com.runanywhere"' --info --debug
+```
+
+Most loggers use the `com.runanywhere.RunAnywhereAI` subsystem, a couple use plain
+`com.runanywhere`, and the SDK logs under its own, so match on the prefix.
 
 ## Tests
 
@@ -112,30 +128,39 @@ Signing is off, since a simulator build needs no identity and hosted runners hav
 
 ## Features
 
-| Feature | Description |
-|---|---|
-| Chat | Streaming LLM with thinking mode, tool calling, document attachments, and LoRA adapters |
-| Speech to text | Batch, live, and hybrid transcription (Sherpa-ONNX, Whisper) |
-| Text to speech | Neural Piper voices |
-| Talk | Full STT, LLM, TTS voice agent with a Metal particle UI |
-| Vision | Camera and photo-library image understanding, including a live mode |
-| Diarization and segmentation | Who spoke when; labelled photo regions |
-| Computer use | The model reads a screenshot and acts on it |
-| Connect | Host a model on a Mac and share it with your other devices |
-| Benchmarks | Deterministic LLM, STT, TTS, and VLM performance tests |
-| Voice keyboard | iOS keyboard extension with a cross-process dictation flow |
-| Model management | Download, load, storage, and deletion, plus Hugging Face import |
+Chat is the app. Everything else sits behind an Advanced hub, reached from the chat on iOS
+and from the sidebar on macOS.
 
-MLX-backed models run on physical iOS devices and native macOS. The arm64 simulator build
-validates packaging and startup but does not execute MLX inference.
+| Feature | Description | Platforms |
+|---|---|---|
+| Chat | Streaming LLM with thinking mode, tool calling, document attachments, and LoRA adapters | iOS, macOS |
+| Speech to text | Batch, live, and hybrid transcription (Sherpa-ONNX, Whisper) | iOS, macOS |
+| Text to speech | Neural Piper voices | iOS, macOS |
+| Talk | Full STT, LLM, TTS voice agent with a Metal particle UI | iOS, macOS |
+| Vision | Camera and photo-library image understanding, including a live mode | iOS, macOS |
+| Diarization | Who spoke when in a recording | iOS |
+| Segmentation | Labelled photo regions | iOS |
+| Computer use | The model reads a screenshot and acts on it | iOS, macOS |
+| Connect | Host a model on a Mac and use it from your other devices | Host: macOS. Client: iOS |
+| Benchmarks | Deterministic LLM, STT, TTS, and VLM performance tests | iOS, macOS |
+| Voice keyboard | Keyboard extension with a cross-process dictation flow | iOS |
+| Model management | Download, load, storage, and deletion, plus Hugging Face import | iOS, macOS |
+
+MLX-backed models run on physical iOS devices and native macOS. On the arm64 simulator
+`MLX.register()` returns false, so the build validates packaging and startup but runs no
+MLX inference and seeds no MLX catalog entries.
 
 ## Layout
 
 `RunAnywhereAI/` holds the app: `App/` (entry point and platform shells), `Features/`,
 `Core/` (design system, services, models), and `Helpers/`. `RunAnywhereKeyboard/` and
-`RunAnywhereActivityExtension/` are the two extension targets. Architecture is MVVM with
-Swift Observation, one `RunAnywhere.*` entry point per modality, and centralized design
-tokens around brand orange `#FF6900`. `AGENTS.md` has the full reference.
+`RunAnywhereActivityExtension/` are the two extension targets. The app and the keyboard
+deploy to iOS 17.5; the Live Activity extension needs iOS 26.2, so on older systems it
+simply does not load.
+
+Architecture is MVVM with Swift Observation, one `RunAnywhere.*` entry point per modality,
+and centralized design tokens around brand orange `#FF6900`. `AGENTS.md` has the full
+reference.
 
 ## Troubleshooting
 
@@ -164,4 +189,4 @@ tokens around brand orange `#FF6900`. `AGENTS.md` has the full reference.
 ## License
 
 RunAnywhere License, Apache 2.0 based with additional commercial-use terms. See
-[LICENSE](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/LICENSE).
+[LICENSE](LICENSE).

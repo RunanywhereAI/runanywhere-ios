@@ -2,11 +2,12 @@
 
 One SwiftUI target, `RunAnywhereAI`, shipping to both the App Store and the Mac App Store,
 plus a keyboard extension and a Live Activity widget. It consumes the RunAnywhere SDK from
-its published GitHub release. The app was extracted from the `runanywhere-sdks` monorepo at
-release 0.20.17 with history preserved, so every path below is relative to this repository's
-root, not to a monorepo `examples/` directory.
+`github.com/RunanywhereAI/runanywhere-swift`, the generated Swift-only SwiftPM distribution
+of the `runanywhere-sdks` monorepo. There is no monorepo checkout and no staged XCFramework:
+SwiftPM downloads checksum-verified binaries on resolve.
 
----
+The app was extracted from the monorepo at release 0.20.17 with history preserved, so every
+path below is relative to this repository's root.
 
 ## Build and run
 
@@ -22,13 +23,12 @@ root, not to a monorepo `examples/` directory.
 ```
 
 `open RunAnywhereAI.xcodeproj` works too; SwiftPM resolves the SDK on open. `./scripts/verify.sh`
-is the local gate (resolve plus full `xcodebuild`), and `./scripts/smoke.sh` greps the sources
-for SDK call patterns without compiling.
+resolves and runs a full simulator `xcodebuild`; `./scripts/smoke.sh` greps the sources for SDK
+call patterns and checks the Parakeet CTC catalog entry, without compiling. CI runs both plus
+the unit tests.
 
 Logs: `log stream --predicate 'subsystem CONTAINS "com.runanywhere"' --info --debug` on
 simulator and Mac, `idevicesyslog | grep "com.runanywhere"` on device.
-
----
 
 ## App Store release
 
@@ -50,180 +50,16 @@ intact:
   archive post-processing.
 - `RunAnywhereExportedSymbols.txt` is not bundled into app resources.
 
-From the repository root:
+The archive procedure, the symbol audit script, the macOS entitlement checks, and the
+screenshot rules all live in `docs/RELEASE_INSTRUCTIONS.md`. Do not duplicate them here.
 
-```bash
-# 1. Build the final release inputs.
-xcodebuild \
-  -project RunAnywhereAI.xcodeproj \
-  -scheme RunAnywhereAI \
-  -configuration Release \
-  -destination 'generic/platform=iOS' \
-  -skipPackagePluginValidation \
-  -jobs "$(sysctl -n hw.logicalcpu)" \
-  build
+Two facts that constrain code changes rather than the release run itself:
 
-# 2. Archive directly into Xcode Organizer's archive folder.
-ARCHIVE_DIR="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)"
-ARCHIVE="$ARCHIVE_DIR/RunAnywhereAI-$(date +%Y%m%d-%H%M%S).xcarchive"
-mkdir -p "$ARCHIVE_DIR"
-xcodebuild \
-  -project RunAnywhereAI.xcodeproj \
-  -scheme RunAnywhereAI \
-  -configuration Release \
-  -destination 'generic/platform=iOS' \
-  -archivePath "$ARCHIVE" \
-  -allowProvisioningUpdates \
-  -skipPackagePluginValidation \
-  -jobs "$(sysctl -n hw.logicalcpu)" \
-  archive
-
-open -a Xcode "$ARCHIVE"
-```
-
-Then audit the archived binary:
-
-```bash
-APP="$ARCHIVE/Products/Applications/RunAnywhereAI.app"
-BIN="$APP/RunAnywhereAI"
-
-nm -gjU "$BIN" 2>/dev/null \
-  | rg '^_(rac|ra_mlx)_' \
-  | sed 's/^_//' \
-  | sort -u > /tmp/runanywhere_archive_exported_symbols.txt
-
-# `swift package resolve` places the SDK sources here. Xcode archives resolve
-# into DerivedData instead, so override with
-# SDK_CHECKOUT=<path-to-runanywhere-swift-checkout> when auditing those.
-# The dependency is the generated `runanywhere-swift` distribution, whose Swift
-# sources sit at `Sources/` — NOT the monorepo's `bindings/swift/Sources/`. A
-# checkout of `runanywhere-sdks` instead of `runanywhere-swift` needs that
-# prefix added back, and from v0.20.18 it is missing the generated proto
-# sources entirely.
-SDK_CHECKOUT="${SDK_CHECKOUT:-.build/checkouts/runanywhere-swift}"
-SRC_DIRS=(
-  "$SDK_CHECKOUT/Sources/RunAnywhere"
-  "$SDK_CHECKOUT/Sources/LlamaCPPRuntime"
-  "$SDK_CHECKOUT/Sources/ONNXRuntime"
-  "$SDK_CHECKOUT/Sources/MLXRuntime"
-)
-
-rg -No '"(rac|ra_mlx)_[A-Za-z0-9_]+"' "${SRC_DIRS[@]}" --glob '*.swift' \
-  | perl -ne 'while (/"((?:rac|ra_mlx)_[A-Za-z0-9_]+)"/g) { print "$1\n" }' \
-  | sort -u > /tmp/runanywhere_expected_swift_native_symbols.from_strings
-
-# Declared only inside a build-configuration guard this archive does not compile.
-# The rg pass above is a plain text scan and does not evaluate `#if`, so without
-# this filter the gate fails on every good archive over a symbol that is
-# CORRECTLY absent. `ra_mlx_metal_resource_anchor` lives in MLXRuntime/MLX.swift
-# under `#if RUNANYWHERE_MLX_DISTRIBUTION`, set only for the CocoaPods
-# distribution build; a SwiftPM archive never compiles it.
-# Extend this list ONLY for a symbol confirmed guarded out of this configuration.
-PACKAGING_ONLY_SYMBOLS=(
-  ra_mlx_metal_resource_anchor
-)
-
-{
-  cat /tmp/runanywhere_expected_swift_native_symbols.from_strings
-  printf '%s\n' \
-    rac_proto_buffer_free \
-    rac_backend_llamacpp_register \
-    rac_backend_llamacpp_unregister \
-    rac_backend_onnx_register \
-    rac_backend_onnx_unregister \
-    rac_plugin_entry_sherpa \
-    rac_plugin_register \
-    rac_plugin_unregister \
-    rac_backend_mlx_register \
-    rac_backend_mlx_unregister \
-    rac_mlx_set_callbacks \
-    ra_mlx_register_runtime \
-    ra_mlx_runtime_is_available \
-    ra_mlx_runtime_is_registered \
-    ra_mlx_unregister_runtime
-} | sort -u \
-  | grep -vxF "$(printf '%s\n' "${PACKAGING_ONLY_SYMBOLS[@]}")" \
-  > /tmp/runanywhere_expected_swift_native_symbols.txt
-
-comm -23 \
-  /tmp/runanywhere_expected_swift_native_symbols.txt \
-  /tmp/runanywhere_archive_exported_symbols.txt \
-  > /tmp/runanywhere_missing_swift_native_symbols.txt
-
-test ! -s /tmp/runanywhere_missing_swift_native_symbols.txt
-```
-
-That final `test` must pass. When it fails, read
-`/tmp/runanywhere_missing_swift_native_symbols.txt`, rebuild the native XCFrameworks, fix the
-Release linker and strip settings, and archive again.
-
-Confirm the release configuration and secrets are present without printing their values:
-
-```bash
-test -f "$APP/RunAnywhereLocalSecrets.plist"
-test -f "$APP/RunAnywhereConfig-Release.plist"
-test ! -e "$APP/RunAnywhereExportedSymbols.txt"
-```
-
-Upload from Xcode Organizer: Validate App, then Distribute App, App Store Connect, Upload.
-From the command line, use the repository's export options plist when present:
-
-```bash
-xcodebuild -exportArchive \
-  -archivePath "$ARCHIVE" \
-  -exportPath "build/archives/$(basename "$ARCHIVE" .xcarchive)-export" \
-  -exportOptionsPlist "build/archives/ExportOptions-app-store-connect.plist" \
-  -allowProvisioningUpdates
-```
-
-### macOS gate
-
-The same target ships as a native Mac app. Before every Mac App Store release:
-
-- Increment `CURRENT_PROJECT_VERSION`. Never reuse an uploaded build number.
-- Keep `MACOSX_DEPLOYMENT_TARGET = 14.5`, matching `Package.swift`.
-- Archive Release for `generic/platform=macOS` at the host logical CPU count.
-- Require App Sandbox, the RunAnywhere app group, and the camera, microphone, outbound
-  network, and user-selected file entitlements.
-- Require Hardened Runtime.
-- Bundle `PrivacyInfo.xcprivacy`, `RunAnywhereLocalSecrets.plist`, and
-  `RunAnywhereConfig-Release.plist` without printing credential values.
-- Keep `RunAnywhereExportedSymbols.txt` out of app resources, and run the platform-filtered
-  ABI audit against `Contents/MacOS/RunAnywhereAI`. Every published Swift backend binary
-  carries a macOS arm64 slice.
-- Verify `codesign`, `arm64`, absence of quarantine metadata, and zero missing `_rac_*` and
-  `_ra_mlx_*` symbols before opening Organizer.
-
-```bash
-JOBS="$(sysctl -n hw.logicalcpu)"
-ARCHIVE_DIR="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)"
-ARCHIVE="$ARCHIVE_DIR/RunAnywhereAI macOS $(date +%Y-%m-%d\ %H.%M.%S).xcarchive"
-mkdir -p "$ARCHIVE_DIR"
-
-xcodebuild \
-  -project RunAnywhereAI.xcodeproj \
-  -scheme RunAnywhereAI \
-  -configuration Release \
-  -destination 'generic/platform=macOS' \
-  -archivePath "$ARCHIVE" \
-  -allowProvisioningUpdates \
-  -skipPackagePluginValidation \
-  -jobs "$JOBS" \
-  archive
-
-open -a Xcode "$ARCHIVE"
-```
-
-Store media: one to ten screenshots in upload order, `1320x2868` sRGB for the 6.9-inch
-iPhone family and `2880x1800` sRGB for macOS. Real app UI stays the dominant content;
-branded framing and factual feature copy are fine. The current voice-first iPhone set uses
-authenticated simulator captures from llama.cpp LFM2 350M, Sherpa-ONNX Whisper Tiny, and
-Piper TTS. MLX may be listed as a supported runtime but must not be presented as tested
-evidence unless separately verified for that build. Until the llama.cpp XCFramework gains a
-macOS slice, Mac copy describes the shared model catalog rather than claiming local
-llama.cpp execution.
-
----
+- The Live Activity extension deploys to iOS 26.2 while the app and keyboard deploy to
+  17.5. A build-settings sweep will show both numbers, and that is correct.
+- `RACommons` and every backend XCFramework (`RABackendLLAMACPP`, `RABackendONNX`,
+  `RABackendSherpa`, `RABackendMLX`, `RABackendNeuRT`) carry a `macos-arm64` slice, so the
+  shared target exposes the same providers on iOS and macOS. Nothing is compiled out on Mac.
 
 ## Architecture
 
@@ -246,44 +82,72 @@ Chat is the product; the SDK demos sit behind a secondary hub rather than top-le
 | Platform | Shell | Structure |
 |---|---|---|
 | macOS | `ConsumerMacShell` | `NavigationSplitView` over `MacSidebar`. Three destinations (Chat, Models, Advanced) plus the conversation list, which is scoped to Chat. Detail is `ChatInterfaceView`, `SimplifiedModelsView`, or `ConsumerAdvancedHubView`. |
-| iOS | `ConsumerCompactShell` | `ChatInterfaceView` alone. Settings, Models, and the Advanced hub are sheets off the chat toolbar. |
+| iOS | `ConsumerCompactShell` | `ChatInterfaceView` alone, plus sheets. |
 
-`MacSidebarSelection` distinguishes `.chat` (the transcript, whatever is current) from
-`.conversation(id)`, so ⌘1 lands somewhere real before anything is saved. Sidebar width and
-selection persist across relaunch via `@SceneStorage`. ⌘1/⌘2/⌘3 are published from the shell
-through `focusedSceneValue(\.shellNavigationActions)` because the chat cannot navigate away
-from itself.
+`MacSidebarSelection` has four cases: `.chat` (the transcript, whatever is current),
+`.conversation(String)`, `.models`, and `.advanced`. Splitting `.chat` from `.conversation`
+is what lets ⌘1 land somewhere real before anything is saved. ⌘1/⌘2/⌘3 are published from
+the shell through `focusedSceneValue(\.shellNavigationActions)` because the chat cannot
+navigate away from itself. One `@SceneStorage` key, `mac.sidebar.visibility`, persists
+whether the sidebar is showing; column width is fixed by `navigationSplitViewColumnWidth`
+and the selection is re-derived from the current conversation on restore.
 
-`ConsumerAdvancedHubView` lists Connect (macOS only), Voice Utilities (Transcribe, Read
-Aloud, Voice Activity, Diarization), Vision Utilities (Segmentation), Agents (Talk, Computer
-Use), and Management (Benchmarks). Storage and tool calling live in Settings and Manage
-Models instead.
+On iOS, Settings and the Advanced hub are sheets, both opened from the conversation drawer
+rather than the toolbar. Models is not the same kind of sheet: the chat presents
+`ModelSelectionSheet` (a picker, cross-platform), while the full `SimplifiedModelsView`
+management screen is reached through a `NavigationLink` inside `CombinedSettingsView`. On
+macOS `SimplifiedModelsView` is the `.models` sidebar destination.
+
+`ConsumerAdvancedHubView` has five sections and eight rows:
+
+| Section | Rows | Availability |
+|---|---|---|
+| Connect | Host this Mac | macOS only (`#if os(macOS)`) |
+| Voice Utilities | Transcribe, Read Aloud, Voice Activity | both |
+| Voice Utilities | Diarization | iOS only (`#if canImport(UIKit)`) |
+| Vision Utilities | Segmentation | iOS only, and so is the whole section |
+| Agents | Talk, Computer Use | both |
+| Management | Benchmarks | both |
+
+Storage and tool calling live in Settings and Manage Models instead.
 
 ### Dependency injection
 
-Three layers: environment objects from `RunAnywhereAIApp` (`FlowSessionManager`), singleton
-services (`ConversationStore.shared`, `SettingsViewModel.shared`, `ModelListViewModel.shared`,
-`KeychainService.shared`), and the static `RunAnywhere.*` SDK namespace.
+Three layers, the first thinner than it looks. `RunAnywhereAIApp` injects exactly one
+environment object, `FlowSessionManager`, and only on iOS; on macOS it injects nothing.
+Everything else is reached as a singleton at the point of use (`ConversationStore.shared`,
+`SettingsViewModel.shared`, `ToolSettingsViewModel.shared`, `ModelListViewModel.shared`,
+`KeychainService.shared`), or through the static `RunAnywhere.*` SDK namespace.
 
 ### Initialization gate
 
-The UI is blocked behind `isSDKInitialized` in `RunAnywhereAIApp.swift`. `isInitializing`
+The UI is blocked behind `isSDKInitialized` in `RunAnywhereAIApp.swift`. `isInitializingSDK`
 guards re-entry separately, because `isSDKInitialized` is only written at the end and cannot
-gate a second call that arrives while the first is still awaiting.
+gate a second call that arrives while the first is still awaiting. Both are `@State` on the
+`App` struct, and both `.task` and the `scenePhase` observer check them.
 
-1. Backend registration, synchronously and before any `await`: `LlamaCPP.register(priority: 100)`,
-   `MLX.register(priority: 100)` (returns `Bool`), `ONNX.register(priority: 100)`,
-   `NeuRT.register(priority: 100)`.
+1. Backend registration: `LlamaCPP.register(priority: 100)`, `MLX.register(priority: 100)`,
+   `ONNX.register(priority: 100)`, `NeuRT.register(priority: 100)`. Only `MLX` returns
+   `Bool`. All but MLX sit behind `#if canImport(...)` guards on their runtime module.
 2. `RunAnywhere.initialize(apiKey:baseUrl:environment:)`, with network work continuing in the
    background.
-3. `ModelCatalogBootstrap.registerAll(mlxRegistered:)`, which registers LLM, VLM, STT, TTS,
-   VAD, embedding, and LoRA rows and omits every MLX row when registration failed.
-4. `RunAnywhere.models.refresh()` then `RunAnywhere.models.list()` to reconcile the registry
-   with disk.
+3. `ModelCatalogBootstrap.registerAll(mlxRegistered:)`, which registers language, multimodal,
+   speech recognition, speech synthesis, voice activity, diarization, segmentation, embedding,
+   and LoRA rows, and omits every MLX row when registration failed.
+4. `RunAnywhere.models.refresh()`, then `RunAnywhere.models.list()` and
+   `RunAnywhere.lora.allRegistered()` to reconcile the registry with disk. Failures here log
+   a warning and do not block startup.
 
-Backends must be registered before any `await`, otherwise a model load can race an empty
-provider registry and fail with -422. MLX executes only on a physical device or native macOS;
-on the arm64 simulator `MLX.register()` returns false and no MLX rows are seeded.
+All four `register` calls run before `RunAnywhere.initialize` and with no `await` between
+them. That ordering is load-bearing: register later and a model load can race an empty
+provider registry and fail with -422, "No provider could handle the request".
+
+The `priority:` argument is currently decorative. Every `register` declares it as
+`priority _: Int = 100` and discards it; the real ordering comes from each plugin's base
+priority in C++ commons.
+
+MLX executes only on a physical device or native macOS. On the arm64 simulator
+`MLX.register()` returns false and no MLX rows are seeded.
 
 ### Cross-platform
 
@@ -292,8 +156,6 @@ iOS 17.5+ and macOS 14.5+, matching the SDK floor. Differences are handled with
 (`DeviceFormFactor` plus `AdaptiveSizing` for phone, tablet, and desktop),
 `ViewCompatibility.swift` shims such as `navigationBarTitleDisplayModeCompat`, and `AppColors`
 bridging `UIColor` and `NSColor`.
-
----
 
 ## Project structure
 
@@ -316,16 +178,15 @@ bridging `UIColor` and `NSColor`.
 | `RunAnywhereAI/Features/RAG/Services/` | `DocumentService` only; text extraction for chat document attachments |
 | `RunAnywhereAI/Features/Storage/` | `StorageViewModel` only; surfaced inside Settings and the models views |
 | `RunAnywhereAI/Extensions/` | `ModelInfo+Logo`, `String+Markdown`, `RunAnywhere+ExampleShims` |
-| `RunAnywhereAI/Helpers/` | `SmartMarkdownRenderer`, `InlineMarkdownRenderer`, `AdaptiveLayout` |
+| `RunAnywhereAI/Helpers/` | `SmartMarkdownRenderer` (`AdaptiveMarkdownText`), `InlineMarkdownRenderer.swift` (declares `MarkdownText`, not a type of its own name), `AdaptiveLayout` |
 | `RunAnywhereAI/Shared/` | `SharedConstants` (IPC keys, Darwin notification names, URL scheme), `SharedDataBridge` |
 | `RunAnywhereKeyboard/` | `KeyboardViewController` (IPC via Darwin notifications), `KeyboardView`, `Info.plist` with `RequestsOpenAccess`, app-group entitlement |
 | `RunAnywhereActivityExtension/` | `WidgetBundle` entry and the Dynamic Island / Lock Screen Live Activity |
 
-Diffusion and image generation are excluded from the v1 build (`RunAnywhereAIApp.swift:12`).
-Their products, registration calls, feature folders, and `generateImage` APIs are
+Diffusion and image generation are excluded from the v1 build; see the comment at the top
+of `RunAnywhereAIApp.swift` and the matching one in `ModelCatalogBootstrap.swift`. Their
+products, registration calls, feature folders, catalog rows, and `generateImage` APIs are
 deliberately absent.
-
----
 
 ## Features
 
@@ -335,7 +196,10 @@ deliberately absent.
 `LLMViewModel.swift`, then `+Generation` (streaming and non-streaming), `+ToolCalling`,
 `+ModelManagement`, `+Analytics`, `+Events` (Combine subscription to `RunAnywhere.eventBus`),
 `+Documents` (RAG-backed attachments), `+MessageActions`, `+Vision`, and the shared
-`LLMViewModelTypes`. `ToolCallingModelPolicy` decides which models get tools.
+`LLMViewModelTypes`. `ToolCallingModelPolicy` gates tools on context length alone
+(`minimumContextTokens = 1024` against the model's `contextLength`), not on model identity;
+its companion `ToolCallingExecutionPolicy` caps the run at two tool calls and 96 tokens of
+final response, at temperature 0 with reasoning off.
 
 Flow: input, `sendMessage()`, `prepareMessagesForSending()` (creates the user message and an
 empty assistant message), `executeGeneration()`, `performGeneration()`, then the streaming,
@@ -347,11 +211,12 @@ the call and execute loop and the format is auto-detected per model.
 
 LoRA lives almost entirely in the SDK. `ModelCatalogBootstrap.registerLoraAdapters()` seeds
 the curated catalog as `RALoraAdapterCatalogEntry` values, mirroring Android's
-`ModelBootstrap.seedLora`. From there the app calls `RunAnywhere.lora.queryCatalog(_:)`,
-`.download(_:artifact:)`, `.importAdapter(from:)`, `.applyCatalogAdapter(_:localPath:scale:)`,
-`.apply(RALoraApplyRequest)` for a raw path, `.remove(_:)`, and `.state()`. Removal of an
-adapter with no catalog id falls back to path-keyed removal, which fails cleanly when other
-adapters are also loaded. Scale is user-adjustable.
+`ModelBootstrap.seedLora`, and registers each one with `RunAnywhere.lora.registerArtifact`.
+From there the app calls `RunAnywhere.lora.queryCatalog(_:)` (with an
+`RALoraAdapterCatalogQuery`), `.download(_:artifact:)`, `.importAdapter(from:)`,
+`.applyCatalogAdapter(_:localPath:scale:)`, `.apply(RALoraApplyRequest)` for a raw path,
+`.remove(RALoraRemoveRequest)`, and `.state()`. Removal is id-keyed or `clearAll`; the old
+path-keyed fallback was deleted. Scale is user-adjustable.
 
 Conversations persist as per-conversation JSON under `Documents/Conversations/`, attachments
 under `Conversations/Attachments/{conversationID}/`. Search covers titles and message content.
@@ -362,9 +227,12 @@ against one on-device model: the old app-side title session hung and wedged ever
 turn behind it with no error and no timeout. Only one title task exists at a time and
 `cancelPendingTitleGeneration()` hands the model back the moment the chat claims a new turn.
 
-Analytics: `MessageAnalytics` per message and `ConversationAnalytics` per conversation,
-tracking TTFT, tokens per second, token counts, thinking-mode usage, and completion rate,
-shown in `ChatDetailsView`.
+Analytics: `MessageAnalytics` per message (time to first token, tokens per second, thinking
+mode, completion status) and `ConversationAnalytics` rolled up onto the stored `Conversation`.
+`ChatDetailsView` recomputes its figures from the per-message records rather than reading the
+rolled-up type, and shows tokens per second, thinking usage, success rate, and average total
+generation time. Per-message TTFT is rendered in `ChatMessageComponents`, not in
+`ChatDetailsView`.
 
 Thinking mode: models with `supportsThinking` expose reasoning through the SDK's `reasoning`
 options and `thinkingText` or stream thought events. Commons owns tag parsing and `/no_think`
@@ -372,16 +240,19 @@ directives; the app toggles the mode and renders the returned channel in a colla
 section.
 
 Documents attached to a chat go through `ChatAttachmentLoader` and `DocumentService` for text
-extraction, then `RunAnywhere.rag.open(...)` for a per-conversation `RagSession` held on the
-view model. There is no separate RAG screen.
+extraction, then `RunAnywhere.rag.open(embeddingModel:llmModel:)` for a `RagSession` cached on
+the view model. The cache key is document plus embedding model plus answer model, so a session
+is reused across turns rather than being strictly one per conversation. There is no separate
+RAG screen.
 
 ### Voice agent
 
 `RunAnywhere.voice.createSession(stt:llm:tts:)` then `session.start()`, which is the only
-call that opens the microphone. `session.events` yields `userTranscribed`,
-`agentStateChanged`, `agentResponse`, `speechStarted`, `speechEnded`, and `error`. The SDK
-owns the whole audio pipeline including its own VAD. The user loads STT, LLM, and TTS models
-independently through `ModelSelectionSheet`.
+call that opens the microphone. `session.events` yields `agentStateChanged` (with
+`.listening`, `.thinking`, `.speaking`), `speechStarted`, `speechEnded`, `userTranscribed`,
+`agentResponse`, `inputSilent`, and `error`. `session.interrupt()` and `session.close()` are
+the other two verbs. The SDK owns the whole audio pipeline including its own VAD. The user
+loads STT, LLM, and TTS models independently through `ModelSelectionSheet`.
 
 `VoiceAssistantParticleView` is a Metal-rendered 2000-particle system: a Fibonacci-lattice
 sphere that morphs to a ring while listening or speaking, with amplitude from the real
@@ -393,17 +264,19 @@ decaying at 0.92.
 STT has three modes. Batch records audio then calls
 `RunAnywhere.stt.transcribe(.pcm16(buffer, sampleRate: 16_000))`. Live yields microphone
 chunks into `RunAnywhere.stt.transcribeStream(_:)`, which owns segmentation and emits
-`.partial` and `.final`. Hybrid runs on-device first with cloud fallback through
-`HybridSTTRouter`. Capture is `AudioCaptureManager` and `AudioCapturePump`; no app-side
-silence detection exists.
+`.partial` and `.final`. Hybrid runs on-device first with cloud fallback through the SDK's
+`HybridSTTRouter`. Capture is the SDK's `AudioCaptureManager` driven by the app-local
+`AudioCapturePump`; no app-side silence detection exists.
 
-TTS is `RunAnywhere.tts.speak(text, options: TtsOptions(speed:pitch:))`, which synthesizes and
-plays inside the SDK and returns nothing, with `RunAnywhere.tts.stop()` to interrupt. Use
-`tts.synthesize(_:)` when the `Audio` buffer is wanted instead of playback.
+TTS is `RunAnywhere.tts.speak(text, options: TtsOptions(speed:))`, which synthesizes and plays
+inside the SDK and hands back a handle. The app awaits `handle.waitForPlayout()` and interrupts
+with `handle.interrupt()`; the whole-engine `RunAnywhere.tts.stop()` is deprecated and used only
+as a fallback when no handle exists. Use `tts.synthesize(_:)` when the `Audio` buffer is wanted
+instead of playback.
 
-VAD feeds microphone chunks to `RunAnywhere.vad.detectStream(_:)`, which emits
-`.speechStarted`, `.speechEnded`, and per-chunk `.frame(VadResult)`. Framing is the SDK's job.
-The activity log holds 50 entries.
+VAD feeds microphone chunks to `RunAnywhere.vad.detectStream(_:)`, which emits `VadEvent`
+values: `.speechStarted`, `.speechEnded`, per-chunk `.activity(isSpeech, _, _)`, `.failed`, and
+`.completed`. Framing is the SDK's job. The activity log holds 50 entries.
 
 ### Voice keyboard
 
@@ -428,26 +301,29 @@ detect a main-app crash after a three-second staleness window.
 Camera and photo-library image understanding, reached from the chat rather than its own tab.
 `AVCaptureSession` with BGRA pixel format feeds
 `RunAnywhere.vlm.generateStream(image: .pixelBuffer(frame), prompt:, options:)`. Live mode
-captures every 2.5 seconds (`autoStreamInterval`) with a 64-token cap and clears on the first
-token, so an unchanged scene does not repeat itself. Pixel conversion belongs to the SDK: pass
+captures every 2.5 seconds (`autoStreamInterval`) and clears on the first token, so an
+unchanged scene does not repeat itself. Its token cap is `autoStreamMaxTokens = 64`; the
+single-shot path has its own, larger `singleShotMaxTokens`. Pixel conversion belongs to the SDK: pass
 `ImageInput` a `CVPixelBuffer` and do not bridge through `CIContext`.
 
 ### Benchmarks
 
 Deterministic tests across LLM, STT, TTS, and VLM, each with a `BenchmarkScenarioProvider`.
 `BenchmarkRunner` orchestrates with cooperative cancellation. Results persist as JSON, capped
-at 50 runs, and export as Markdown, JSON, or CSV. `SyntheticInputGenerator` produces silent
-and sine-wave audio and solid and gradient images. LLM scenarios run at 50, 256, and 512
-tokens measuring TTFT and decode speed.
+at 50 runs. `BenchmarkExportFormat` offers Markdown and JSON; CSV exists only as a
+`writeCSV(run:)` file writer with no picker entry. `SyntheticInputGenerator` produces silent
+and sine-wave audio (440 Hz at 16 kHz) and solid and gradient 224x224 images. LLM scenarios
+run at 50, 256, and 512 tokens measuring TTFT and decode speed.
 
 ### Models
 
 `ModelListViewModel` is the canonical registry singleton, subscribed to
 `RunAnywhere.eventBus.modelLifecycle` for live load and unload state. `ModelSelectionSheet` is
-the universal picker, parameterized by `ModelSelectionContext` (`.llm`, `.stt`, `.tts`, `.vad`,
-`.vlm`, `.ragEmbedding`, `.ragLLM`). Custom models arrive through `AddModelFromURLView` or
-`AddFromHuggingFaceView`. `ModelRecommendation` and `ModelCompatibilityLookup` drive the
-recommended set, and `HardwareTier` scopes it to the device.
+the universal picker, parameterized by `ModelSelectionContext`: `.llm`, `.stt`, `.tts`, `.vad`,
+`.voice`, `.vlm`, `.ragEmbedding`, `.ragLLM`, `.diarization`, `.segmentation`. Custom models
+arrive through `AddModelFromURLView` or `AddFromHuggingFaceView`. `ModelRecommendationEngine`
+and `ModelCompatibilityLookup` drive the recommended set, and `HardwareTier` scopes it to the
+device.
 
 ### Storage
 
@@ -462,57 +338,56 @@ views.
 ### Settings and tools
 
 `SettingsViewModel` (singleton) owns temperature, max tokens, and system prompt in
-`UserDefaults`, API key and base URL in the Keychain, and the thinking-mode toggle, saving on a
-Combine `debounce(0.5s)`.
+`UserDefaults`, and API key and base URL in the Keychain. Temperature, max tokens, and system
+prompt each save on a Combine `debounce(0.5s)`; the thinking-mode toggle writes through
+immediately.
 
-`ToolSettingsViewModel` registers tools through `RunAnywhere.llm.tools`. Five are always
-available: `get_weather` (Open-Meteo), `get_current_time`, `calculate` (a recursive-descent
-`SafeMathEvaluator`), `get_device_info`, and `get_battery_level`. Two more are opt-in behind a
-toggle and a permission prompt: `get_calendar_events` (`CalendarTool`) and `get_health_data`
-(`HealthKitTool`). `registerBuiltInTools()` restores the enabled set at launch, because
-assigning a stored property inside `init` does not fire `didSet`.
-
----
+`ToolSettingsViewModel` is a separate singleton and registers tools through
+`RunAnywhere.llm.tools`. Six are always available: `get_weather` (Open-Meteo),
+`get_current_time`, `calculate` (a recursive-descent `SafeMathEvaluator`), `get_device_info`,
+`get_battery_level`, and the SDK's own web search, added by `RunAnywhere.registerWebSearchTool()`.
+Two more are opt-in behind a toggle and a permission prompt: `get_calendar_events`
+(`CalendarTool`) and `get_health_data` (`HealthKitTool`, iOS only). `registerBuiltInTools()`
+restores the enabled set at launch, because assigning a stored property inside `init` does not
+fire `didSet`.
 
 ## Markdown rendering
 
-One path, not a detect-and-route chain. `MarkdownBlockParser.parse(content)` turns the reply
-into `[MarkdownBlock]` (paragraph, heading, list, quote, code fence, rule) with no SwiftUI
+One path, not a detect-and-route chain. `MarkdownBlockParser.parse(_:)` turns the reply into
+`[MarkdownBlock]` (`paragraph`, `heading`, `list`, `quote`, `code`, `rule`) with no SwiftUI
 involved, and `AdaptiveMarkdownText` renders one view per block: `MarkdownListView`,
 `MarkdownQuoteView`, `MarkdownCodeBlock` (syntax-colored header, copy button, monospaced
-scrollable body), and inline text through `InlineMarkdownRenderer`, which uses
-`AttributedString(markdown:)` with bold as `.semibold`, italic as `.italic`, and inline code
-monospaced and purple-tinted.
-
----
+scrollable body), and inline text through `MarkdownText` in `InlineMarkdownRenderer.swift`,
+which uses `AttributedString(markdown:)` with bold as `.semibold`, italic as `.italic`, and
+inline code monospaced and purple-tinted.
 
 ## SDK surface used here
 
-Every call goes through the `RunAnywhere` enum, following the cross-SDK v3 contract in the
-monorepo's `thoughts/shared/plans/public_api_spec.md`. One namespace per modality; the SDK owns
-model resolution, loading, downloading, and orchestration behind each verb.
+Every call goes through the `RunAnywhere` enum. One namespace per modality; the SDK owns model
+resolution, loading, downloading, and orchestration behind each verb. What follows is what this
+app actually calls, not the SDK's full surface, which is larger.
 
 ```swift
 // Core
 try RunAnywhere.initialize(apiKey:baseUrl:environment:)   // one call, both phases
-RunAnywhere.isReady / .version / .deviceId
-RunAnywhere.events            // AsyncStream<SdkEvent>
-RunAnywhere.eventBus          // Combine publisher over raw RASDKEvent protos
+RunAnywhere.isReady
+RunAnywhere.eventBus.events / .modelLifecycle             // Combine, raw RASDKEvent protos
+RunAnywhere.clearCache() / .cleanTempFiles()
 
 // Models
-RunAnywhere.models.list(filter:) / .get(id:) / .register(_:) / .download(id:)
+RunAnywhere.models.list(filter:) / .get(id:) / .register(_:) / .refresh()
+RunAnywhere.models.download(id:) / .isResumable(...) / .checkCompatibility(...)
 RunAnywhere.models.load(id:options:) / .unload(category:) / .delete(id:) / .state()
 
 // Generation
-RunAnywhere.llm.generate(prompt:options:) / .generate(messages:options:)
-RunAnywhere.llm.generateStream(...) / .generateStructured(prompt:schema:options:)
-RunAnywhere.llm.tools.register(_:executor:) / .unregister(name:) / .list() / .clear()
+RunAnywhere.llm.generate(...) / .generateStream(...)
+RunAnywhere.llm.tools.register(_:executor:) / .list() / .clear()
 RunAnywhere.vlm.generate(image:prompt:options:) / .generateStream(...)
 
 // Audio and vision
-RunAnywhere.stt.transcribe(_:options:) / .transcribeStream(_:options:) / .state()
-RunAnywhere.tts.synthesize(_:options:) / .speak(_:options:) / .stop() / .voices()
-RunAnywhere.vad.detect(_:options:) / .detectStream(_:options:)
+RunAnywhere.stt.transcribe(_:options:) / .transcribeStream(_:options:)
+RunAnywhere.tts.speak(_:options:) / .synthesize(_:options:) / .stop()
+RunAnywhere.vad.detectStream(_:options:)
 RunAnywhere.diarization.diarize(_:options:)
 RunAnywhere.segmentation.segment(_:options:)
 
@@ -521,34 +396,34 @@ let voice = try await RunAnywhere.voice.createSession(stt:llm:tts:)
 try voice.start()             // the only thing that opens the microphone
 let rag = try await RunAnywhere.rag.open(embeddingModel:llmModel:)
 
-// LoRA, embeddings, rerank, storage
-RunAnywhere.lora.apply(adapterId:scale:) / .remove(adapterId:) / .list()
-RunAnywhere.embeddings.embed(_:options:)
-RunAnywhere.rerank.rerank(query:documents:topN:)
-RunAnywhere.clearCache() / .cleanTempFiles() / .deleteStorage(_:)
+// LoRA
+RunAnywhere.lora.registerArtifact(_:artifact:) / .allRegistered() / .queryCatalog(_:)
+RunAnywhere.lora.download(_:artifact:) / .importAdapter(from:) / .applyCatalogAdapter(...)
+RunAnywhere.lora.apply(RALoraApplyRequest) / .remove(RALoraRemoveRequest) / .state()
 ```
 
-Inputs are `AudioInput` (`.pcm16`, `.float32`, `.wav`, `.file`) and `ImageInput` (`.file`,
-`.bytes`, `.rawRgb`, `.uiImage`, `.cgImage`, `.pixelBuffer`). Options are `LlmOptions`,
-`SttOptions`, `TtsOptions`, `VadOptions`, `EmbedOptions`, `ImageOptions`,
-`DiarizationOptions`, `SegmentationOptions`, `LoadOptions`, and `RagConfig`; every field is
-optional and every default comes from the IDL.
+The SDK also exposes `embeddings`, `rerank`, `images`, `generateStructured`, `tts.voices()`,
+`vad.detect(_:)`, `RunAnywhere.events`, `.version`, `.deviceId`, and `deleteStorage(_:)`. This
+app calls none of them. Do not document them here as if it did.
+
+Inputs are `AudioInput` and `ImageInput`. The app constructs `.pcm16`, `.uiImage`, and
+`.pixelBuffer`; the other cases exist but go unused here. Options types carry all-optional
+fields whose defaults come from the IDL, so the app passes only what it overrides: `LlmOptions`
+and `TtsOptions` in practice.
 
 One-shot verbs throw `SDKException`. Stream factories are `async throws -> AsyncThrowingStream`,
 so they throw on preflight failure and throw into the consumer mid-flight. No result carries a
 `success` flag and no error text hides in a payload field. Cancel by cancelling the consuming
 Task; there are no cancel verbs.
 
-The older flat verbs (`loadModel`, `transcribe`, `ragQuery`) survive as deprecated forwarders
-in the SDK for one release. Do not use them here.
+The older flat verbs (`loadModel`, `transcribe`, `ragQuery`) are deprecated forwarders in the
+SDK. Do not use them here.
 
 `RunAnywhere+ExampleShims.swift` holds one app-local helper,
 `RunAnywhere.getRegisteredFrameworks() -> [RAInferenceFramework]`, which composes
 `RunAnywhere.models.list()` into a framework filter sorted by descending model count. A new
 feature needing net-new C bridge code belongs in the SDK; only UI plumbing over existing
 canonical proto APIs belongs in that file.
-
----
 
 ## Design system
 
@@ -562,8 +437,6 @@ variants. `Layout` holds window sizes, content widths, and animation durations, 
 shared curves and springs, `Surface` the elevation treatments, and `AdaptiveSizing` the phone,
 tablet, and desktop scaling.
 
----
-
 ## Scripts and configuration
 
 | Script | Purpose |
@@ -574,14 +447,17 @@ tablet, and desktop scaling.
 
 | File | Purpose |
 |---|---|
-| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-swift` at `from: "0.20.18"` (the Swift-only SPM distribution generated from the monorepo — the monorepo itself stopped committing `bindings/swift/Sources/RunAnywhere/Generated/` at v0.20.18 and no longer compiles as an SPM dependency), giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX, RunAnywhereNeuRT. The Xcode project mirrors it with `upToNextMajorVersion` from the same version. Its `RunAnywhereAITests` testTarget must point at `RunAnywhereAIUnitTests/`, not the XCUITest bundle. |
+| `Package.swift` | One dependency: `github.com/RunanywhereAI/runanywhere-swift` at `from: "0.20.19"`, giving RunAnywhere, RunAnywhereONNX, RunAnywhereLlamaCPP, RunAnywhereMLX, RunAnywhereNeuRT. The Xcode project mirrors it with `upToNextMajorVersion` from the same minimum, and declares all five products on the app target. Its `RunAnywhereAITests` testTarget must point at `RunAnywhereAIUnitTests/`, not the XCUITest bundle. |
 | `Package.resolved` | Committed record of the resolved version and commit. CI fails if `swift package resolve` leaves it dirty, so commit it whenever the dependency moves. |
-| `Info.plist` | URL scheme `runanywhere`, `audio` background mode, Live Activities |
-| `RunAnywhereAI.entitlements` | macOS sandbox, camera, microphone, network, app group |
-| `Resources/RunAnywhereConfig-Debug.plist` | Dev API URL, debug logging, 30s timeout |
-| `Resources/RunAnywhereConfig-Release.plist` | Prod API URL, warning-level logging, 15s timeout, crash reporting |
+| `Info.plist` | URL scheme `runanywhere`, `audio` background mode, Live Activities, and the local-network and Bonjour (`_runanywhere-connect._tcp`) declarations that Connect needs |
+| `RunAnywhereAI.entitlements` | App Sandbox, `device.camera`, `device.audio-input`, `network.client` and `network.server`, user-selected files (read-only and read-write), the `group.com.runanywhere.runanywhereai` app group, HealthKit, and `kernel.increased-memory-limit` |
+| `Resources/RunAnywhereConfig-{Debug,Release}.plist` | Bundled but read by nothing today. Debug names `api-dev.runanywhere.ai` and debug logging, Release names `api.runanywhere.ai`, warning-level logging, and crash reporting, but none of it reaches `RunAnywhere.initialize`. Treat them as inert until code reads them. |
 | `.swiftlint.yml` | Line length 120/150, function body 50/100, `force_cast` as error, TODOs require an issue number |
 
-Environment: `#if DEBUG` initializes with no API key and uses Supabase; Release requires a
-stored API key and base URL from Settings and calls `fatalError` when they are missing. The
-config plists supply `environment`, `api.baseURL`, and `logging.minimumLogLevel`.
+Credentials, in `RunAnywhereAIApp.swift`, come from the first source yielding a usable pair:
+the Keychain (written in Settings), then `RunAnywhereLocalSecrets.plist` in the bundle (keys
+`apiKey`, `baseURL`), then the Info.plist keys `RUNANYWHERE_API_KEY` and
+`RUNANYWHERE_BASE_URL`. Placeholder-looking values and malformed URLs are rejected. With
+credentials the app initializes at `environment: .production`; without them a Debug build
+falls back to `.development` and a Release build calls `fatalError`. See
+`docs/RELEASE_INSTRUCTIONS.md`.

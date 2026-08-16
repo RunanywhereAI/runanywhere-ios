@@ -20,17 +20,28 @@ explicit actions. Paths are relative to the repository root.
 
 ## Production configuration
 
-`RunAnywhereAI/App/RunAnywhereAIApp.swift` owns the credential selection flow:
+`RunAnywhereAI/App/RunAnywhereAIApp.swift` picks the API key and base URL from the
+first source that yields a usable pair:
 
-1. Credentials stored by the user in Settings.
-2. Bundled values from `Resources/RunAnywhereLocalSecrets.plist`.
-3. Bundle configuration values, when provided.
+1. Keychain, written by the user in Settings (`runanywhere_api_key`, `runanywhere_base_url`).
+2. `RunAnywhereLocalSecrets.plist` in the app bundle, keys `apiKey` and `baseURL`.
+3. Info.plist keys `RUNANYWHERE_API_KEY` and `RUNANYWHERE_BASE_URL`, usually fed from an xcconfig.
 
-Release initialization fails loudly when no usable credentials exist. Verify
-the local plist and both required keys without printing their values:
+Every candidate is rejected if it looks like a placeholder (`YOUR_`, `<your`,
+`REPLACE_ME`, `PLACEHOLDER`, `$(`) or if the base URL is not a well-formed http or
+https URL with a host. When nothing survives, a Release build calls `fatalError` at
+launch; a Debug build falls back to `RunAnywhere.initialize(environment: .development)`.
+
+The secrets plist is gitignored. Copy the template and fill it in:
 
 ```bash
 SECRETS="RunAnywhereAI/Resources/RunAnywhereLocalSecrets.plist"
+cp docs/RunAnywhereLocalSecrets.plist.example "$SECRETS"   # first time only
+```
+
+Verify it and both required keys without printing their values:
+
+```bash
 test -f "$SECRETS"
 plutil -lint "$SECRETS"
 /usr/libexec/PlistBuddy -c 'Print :apiKey' "$SECRETS" >/dev/null
@@ -45,6 +56,11 @@ test -f "$APP/Contents/Resources/RunAnywhereLocalSecrets.plist" || \
 test -f "$APP/Contents/Resources/RunAnywhereConfig-Release.plist" || \
   test -f "$APP/RunAnywhereConfig-Release.plist"
 ```
+
+`RunAnywhereConfig-Release.plist` is bundled but no Swift code reads it today, so this
+is a packaging assertion, not a functional one. The environment, base URL, and log level
+that actually reach the SDK come from the credential sources above and from the
+`environment:` argument in `RunAnywhereAIApp.swift`.
 
 ## Version and platform preflight
 
@@ -64,7 +80,9 @@ Confirm:
 - The marketing version matches the intended App Store version.
 - The build number is higher than every build already uploaded for that
   marketing version.
-- `IPHONEOS_DEPLOYMENT_TARGET` is `17.5`.
+- `IPHONEOS_DEPLOYMENT_TARGET` is `17.5` for `RunAnywhereAI` and `RunAnywhereKeyboard`.
+  `RunAnywhereActivityExtension` reports `26.2`, which is correct: Live Activities in the
+  shape this app uses need iOS 26. Do not lower it to make the output uniform.
 - `MACOSX_DEPLOYMENT_TARGET` is `14.5`.
 
 ## App Store screenshots
@@ -84,23 +102,13 @@ Use sRGB PNG or JPEG without transparency. Keep the real UI as the dominant
 content. Branded backgrounds and short factual captions are acceptable, but do
 not imply that a capability was tested when it was not.
 
-For the July 2026 release capture, the prepared assets are under:
+Capture assets are not tracked. `build/` is gitignored, so stage them there or anywhere
+else and treat them as per-release artifacts.
 
-```text
-build/screenshots/app-store-2026-07-09/
-  ios-6.9/                 # raw iPhone Simulator captures
-  ios-6.9-voice-refresh/   # tested llama.cpp and ONNX/Sherpa captures
-  ios-marketing-6.9-voice/ # recommended six-image 1320x2868 iPhone set
-  ios-marketing-6.9/       # previous generic iPhone set
-  macos-raw/               # raw macOS window captures
-  macos-marketing/         # five branded 2880x1800 screenshots
-  contact-sheets/          # review overviews; do not upload these
-```
-
-The recommended iPhone set uses real simulator evidence from llama.cpp LFM2
-350M, Sherpa-ONNX Whisper Tiny, and Piper TTS. MLX may be mentioned elsewhere
-as a supported runtime, but do not present it as tested evidence unless it is
-separately verified for that build.
+Whatever a screenshot shows must have run on the build being shipped. MLX is the trap
+here: it is a supported runtime, but it does not execute on the simulator that most
+captures come from, so do not present it as tested evidence unless it was separately
+verified on a device for that build.
 
 ## iOS build and archive
 
@@ -197,15 +205,20 @@ For macOS, verify sandbox and Hardened Runtime without changing the signature:
 ```bash
 codesign -d --entitlements :- "$APP" 2>/dev/null \
   | plutil -p - \
-  | rg 'app-sandbox|application-groups|camera|microphone|network.client|files.user-selected'
+  | rg 'app-sandbox|application-groups|device.camera|device.audio-input|network.(client|server)|files.user-selected'
 
 codesign -dvvv "$APP" 2>&1 | rg 'flags=.*runtime'
 ! xattr -p com.apple.quarantine "$APP" >/dev/null 2>&1
 ```
 
-Expected macOS entitlements include App Sandbox, the RunAnywhere app group,
-camera, microphone, outbound network, and user-selected file access. A locally
-created development archive can contain `get-task-allow`; the App Store export
+`RunAnywhereAI.entitlements` is the reference for what should appear: App Sandbox, the
+`group.com.runanywhere.runanywhereai` app group, `device.camera`, `device.audio-input`,
+`network.client`, `network.server` (Connect hosts an `NWListener` over Bonjour),
+`files.user-selected` read-only and read-write, HealthKit, and the increased memory limit.
+Match on the real key names, not on the words "camera" and "microphone": the microphone
+entitlement is spelled `com.apple.security.device.audio-input`.
+
+A locally created development archive can contain `get-task-allow`; the App Store export
 must be distribution-signed and must not retain it.
 
 ## Native ABI release gate
@@ -282,59 +295,29 @@ rg -No '"(rac|ra_mlx)_[A-Za-z0-9_]+"' "${SRC_DIRS[@]}" --glob '*.swift' \
   | perl -ne 'while (/"((?:rac|ra_mlx)_[A-Za-z0-9_]+)"/g) { print "$1\n" }' \
   | sort -u > /tmp/runanywhere_expected_swift_native_symbols.from_strings
 
-# Symbols declared ONLY inside a build-configuration guard the archive does not
-# compile. The rg pass above is a plain text scan and does not evaluate `#if`, so
-# without this filter it reports a symbol that is CORRECTLY absent and the gate
-# fails on every good archive.
+# The rg pass above is a plain text scan and does not evaluate `#if`, so it also
+# picks up symbols that this archive correctly does not compile. Filter those, or
+# the gate fails on every good archive.
 #
-#   ra_mlx_metal_resource_anchor lives in MLXRuntime/MLX.swift, inside
-#   `#if RUNANYWHERE_MLX_DISTRIBUTION`. That flag is set only for the CocoaPods
-#   distribution build (Package.swift keys it off
-#   RUNANYWHERE_BUILD_MLX_DISTRIBUTION_FRAMEWORK); a normal SwiftPM archive uses
-#   mlx-swift's own resource bundle and never compiles the declaration.
+#   ra_mlx_metal_resource_anchor is declared in MLXRuntime/MLX.swift inside
+#   `#if RUNANYWHERE_MLX_DISTRIBUTION`. That flag is set only when the monorepo
+#   builds the CocoaPods MLX distribution framework
+#   (RUNANYWHERE_BUILD_MLX_DISTRIBUTION_FRAMEWORK=1). This app archives from
+#   `runanywhere-swift`, which does not even ship the MLXRuntimeDistribution
+#   target, so the symbol can never be present here.
 #
-# Add to this list only for a symbol you have confirmed is guarded out of THIS
+# Add to this list only for a symbol you have confirmed is guarded out of this
 # archive's configuration, never to silence a genuinely missing export.
-#
-# THE FILTER IS PER-CONFIGURATION, and that is the whole point: in the CocoaPods
-# distribution archive `RUNANYWHERE_MLX_DISTRIBUTION` IS set, so
-# ra_mlx_metal_resource_anchor MUST be exported there. Filtering it
-# unconditionally would let a genuinely missing export pass the audit in exactly
-# the build that needs it, which is the failure this gate exists to catch. So the
-# exclusion applies only to a SwiftPM archive; a distribution archive filters
-# nothing and fails on the missing symbol.
-ARCHIVE_FLAVOR="${RUNANYWHERE_ARCHIVE_FLAVOR:-swiftpm}"   # swiftpm | distribution
-case "$ARCHIVE_FLAVOR" in
-  swiftpm)
-    PACKAGING_ONLY_SYMBOLS=(
-      ra_mlx_metal_resource_anchor
-    )
-    ;;
-  distribution)
-    # Nothing is guarded out of this configuration: audit the full expected set.
-    PACKAGING_ONLY_SYMBOLS=()
-    ;;
-  *)
-    echo "unknown RUNANYWHERE_ARCHIVE_FLAVOR='$ARCHIVE_FLAVOR' (expected swiftpm|distribution)" >&2
-    exit 2
-    ;;
-esac
+PACKAGING_ONLY_SYMBOLS=(
+  ra_mlx_metal_resource_anchor
+)
 
 {
   cat /tmp/runanywhere_expected_swift_native_symbols.from_strings
   printf '%s\n' "${REQUIRED_SYMBOLS[@]}"
-} | sort -u > /tmp/runanywhere_expected_swift_native_symbols.all
-
-# `grep -vxF` with an empty pattern list would be a no-op filter that silently
-# drops nothing OR everything depending on the shell, so branch explicitly.
-if [ ${#PACKAGING_ONLY_SYMBOLS[@]} -eq 0 ]; then
-  cp /tmp/runanywhere_expected_swift_native_symbols.all \
-     /tmp/runanywhere_expected_swift_native_symbols.txt
-else
-  grep -vxF "$(printf '%s\n' "${PACKAGING_ONLY_SYMBOLS[@]}")" \
-    /tmp/runanywhere_expected_swift_native_symbols.all \
-    > /tmp/runanywhere_expected_swift_native_symbols.txt
-fi
+} | sort -u \
+  | grep -vxF "$(printf '%s\n' "${PACKAGING_ONLY_SYMBOLS[@]}")" \
+  > /tmp/runanywhere_expected_swift_native_symbols.txt
 
 comm -23 \
   /tmp/runanywhere_expected_swift_native_symbols.txt \
@@ -357,7 +340,9 @@ fix the Release linker/export settings before uploading.
    privacy answers, and export-compliance answers.
 5. Submit for review only after a final metadata and binary check.
 
-Command-line export is optional and still does not upload:
+Command-line export is optional and still does not upload. No export options plist is
+tracked in this repo, so write one first (`method` = `app-store-connect`, plus your team
+ID) and point at it:
 
 ```bash
 xcodebuild -exportArchive \

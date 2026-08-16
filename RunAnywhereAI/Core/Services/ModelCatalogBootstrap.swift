@@ -340,6 +340,37 @@ enum ModelCatalogBootstrap {
             // 11,774,991,296 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 13_500_000_000
         )
+        // IBM Granite 4.1 family, dense, Apache 2.0 (confirmed via HF
+        // cardData.license). unsloth GGUF across all three sizes.
+        await registerLLM(
+            id: "granite-4.1-3b-q4_k_m",
+            name: "IBM Granite 4.1 3B Q4_K_M",
+            url: "https://huggingface.co/unsloth/granite-4.1-3b-GGUF/resolve/main/granite-4.1-3b-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 2,099,502,400 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 2_400_000_000
+        )
+        await registerLLM(
+            id: "granite-4.1-8b-q4_k_m",
+            name: "IBM Granite 4.1 8B Q4_K_M",
+            url: "https://huggingface.co/unsloth/granite-4.1-8b-GGUF/resolve/main/granite-4.1-8b-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 5,347,915,136 B of weights plus KV cache and runtime overhead.
+            // No MLX row for this size: mlx-community only has this 8B in
+            // bf16/nvfp4/mxfp4/mxfp8 (no clean 4-bit) plus one unofficial
+            // third-party "-oQ4" repo from a non-reputable quantizer.
+            memoryRequirement: 6_150_000_000
+        )
+        // Largest Granite 4.1, desktop-scale. Dense (verified: GGUF metadata
+        // reports plain `granite` architecture, no expert-routing fields).
+        await registerLLM(
+            id: "granite-4.1-30b-q4_k_m",
+            name: "IBM Granite 4.1 30B Q4_K_M",
+            url: "https://huggingface.co/unsloth/granite-4.1-30b-GGUF/resolve/main/granite-4.1-30b-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 17,490,241,472 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 19_200_000_000
+        )
         logger.info("LLM models registered")
         #endif
 
@@ -593,6 +624,30 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 22_400_000_000,
             supportsThinking: true
         )
+        // IBM Granite 4.1, plain dense transformer. Verified against the
+        // pinned mlx-swift-lm 3.31.4 checkout: both repos' config.json declare
+        // model_type "granite" (GraniteForCausalLM), which IS a registered
+        // LLMModelFactory entry (`"granite": create(GraniteConfiguration.self,
+        // GraniteModel.init)`), so this loads through the ordinary MLX LLM
+        // path. No MLX row for the 8B size — see the GGUF row's comment.
+        await registerLLM(
+            id: "mlx-granite-4.1-3b-4bit",
+            name: "MLX IBM Granite 4.1 3B 4bit",
+            url: "https://huggingface.co/mlx-community/granite-4.1-3b-4bit",
+            framework: .mlx,
+            // 2,134,391,329 B for the whole repo plus KV cache and Metal
+            // runtime overhead.
+            memoryRequirement: 2_350_000_000
+        )
+        await registerLLM(
+            id: "mlx-granite-4.1-30b-4bit",
+            name: "MLX IBM Granite 4.1 30B 4bit",
+            url: "https://huggingface.co/mlx-community/granite-4.1-30b-4bit",
+            framework: .mlx,
+            // 18,041,244,771 B for the whole repo plus KV cache and Metal
+            // runtime overhead.
+            memoryRequirement: 19_800_000_000
+        )
         // NOTE: No MLX Gemma 4 checkpoint of ANY size (E2B/E4B/12B/26B-A4B/31B)
         // is registered here. Their attention layers use an asymmetric QK-norm
         // (some layers ship `self_attn.q_norm` without a matching
@@ -603,6 +658,31 @@ enum ModelCatalogBootstrap {
         // every Gemma 4 MLX checkpoint until mlx-swift-lm makes per-layer
         // k_norm optional. The GGUF (llama.cpp) Gemma 4 variants in the LLM
         // section above load fine and remain available at every size.
+        //
+        // NOTE: No MLX row for `mlx-community/Muse-Glimmer-30B-4bit` either.
+        // Verified against the pinned mlx-swift-lm 3.31.4 checkout: this
+        // repo's config.json declares `model_type: "muse_glimmer"`, which is
+        // NOT among VLMModelFactory's registered types (paligemma, qwen2_vl,
+        // qwen2_5_vl, qwen3_vl, qwen3_5[_moe], idefics3, gemma3, gemma4[_unified],
+        // smolvlm, fastvlm, llava_qwen2, pixtral, mistral3, lfm2_vl, glm_ocr —
+        // no "muse_glimmer" anywhere) — it would download in full and then
+        // fail to load. Separately, this exact repo's advertised size is
+        // wrong: the coordinator-supplied ~19.4 GB estimate does not match
+        // what the HF blobs API reports for this repo (4 safetensors shards
+        // totaling 39,443,521,145 B, ~39.4 GB — roughly 2x), most likely
+        // because the vision tower and/or embeddings are kept at higher
+        // precision even under a nominal "4bit" LLM quant. The GGUF
+        // (llama.cpp) row below is unaffected and is the only Muse Glimmer
+        // row in this catalog.
+        //
+        // NOTE: No MLX row for
+        // `mlx-community/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit` either,
+        // for the same reason: its config.json declares
+        // `model_type: "NemotronH_Nano_Omni_Reasoning_V3"`. VLMModelFactory
+        // has zero Nemotron entries of any kind, and LLMModelFactory's only
+        // Nemotron entry, `"nemotron_h"`, is a different, non-matching string
+        // (and is text-only — it has no vision path regardless). The GGUF
+        // (llama.cpp) row below is the only way this model is exposed here.
         await registerLLM(
             id: "mlx-qwen2-vl-2b-instruct-4bit",
             name: "MLX Qwen2-VL 2B Instruct 4bit",
@@ -797,6 +877,55 @@ enum ModelCatalogBootstrap {
             modality: .multimodal,
             memoryRequirement: 3_300_000_000,
             cuaProfile: RunAnywhere.CUA.faraProfile
+        )
+        // Meta Muse Glimmer 30B (Meta Superintelligence Labs, Apache 2.0,
+        // released 2026-08-10). Genuinely vision-capable — unsloth ships a
+        // real mmproj — so it registers as a VLM row like the Gemma 4 /
+        // Qwen2.5-VL rows above. UD-Q4_K_XL is unsloth's own top-tier dynamic
+        // 4-bit quant for this model; the card has no plain Q4_K_M and no
+        // separate "recommended" override.
+        await registerMultiFile(
+            id: "muse-glimmer-30b-q4_k_xl",
+            name: "Meta Muse Glimmer 30B Q4_K_XL",
+            files: [
+                ("https://huggingface.co/unsloth/Muse-Glimmer-30B-GGUF/resolve/main/Muse-Glimmer-30B-UD-Q4_K_XL.gguf",
+                 "Muse-Glimmer-30B-UD-Q4_K_XL.gguf"),
+                ("https://huggingface.co/unsloth/Muse-Glimmer-30B-GGUF/resolve/main/mmproj-Muse-Glimmer-30B-Q8_0.gguf",
+                 "mmproj-Muse-Glimmer-30B-Q8_0.gguf")
+            ],
+            framework: .llamaCpp,
+            modality: .multimodal,
+            // 15,878,222,368 (decoder) + 2,051,685,088 (mmproj) B of weights
+            // plus KV cache, vision activations, and runtime overhead.
+            // Desktop-scale (Mac/Windows), like the largest Gemma 4/Granite
+            // 4.1 rows above; no phone-tier gating exists in this file today,
+            // so it is registered like every other heavy row and left to the
+            // existing HardwareTier/recommendation layer at runtime.
+            memoryRequirement: 20_600_000_000
+        )
+        // NVIDIA Nemotron 3 Nano Omni 30B-A3B Reasoning (MoE, 31B total / 3B
+        // active). This has a real mmproj (image projector), so it registers
+        // as a VLM row here — but ONLY image+text works through this app's
+        // mmproj/llama.cpp path. The model's "Omni" name markets audio/video
+        // understanding too; that is NOT exposed by this registration or by
+        // any code path in this app, so do not describe this row as full
+        // omni capability anywhere it is surfaced.
+        await registerMultiFile(
+            id: "nemotron-3-nano-omni-30b-a3b-reasoning-q4_k_m",
+            name: "NVIDIA Nemotron 3 Nano Omni 30B-A3B Reasoning Q4_K_M (Image+Text)",
+            files: [
+                ("https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF/resolve/main/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-UD-Q4_K_M.gguf",
+                 "NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-UD-Q4_K_M.gguf"),
+                ("https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF/resolve/main/mmproj-F16.gguf",
+                 "mmproj-F16.gguf")
+            ],
+            framework: .llamaCpp,
+            modality: .multimodal,
+            // 23,887,023,552 (decoder) + 1,587,540,224 (mmproj) B of weights
+            // plus KV cache, vision activations, and runtime overhead.
+            // Desktop-scale, same convention as Muse Glimmer above.
+            memoryRequirement: 28_000_000_000,
+            supportsThinking: true
         )
         logger.info("VLM models registered")
         #endif

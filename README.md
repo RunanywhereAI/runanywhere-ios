@@ -1,18 +1,25 @@
 # RunAnywhere AI iOS and macOS example
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/RunanywhereAI/runanywhere-sdks/main/docs/logo.svg" alt="RunAnywhere" width="120"/>
-</p>
-
-<p align="center">
-  <a href="https://apps.apple.com/us/app/runanywhere/id6756506307">
-    <img src="https://img.shields.io/badge/App%20Store-Download-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
-  </a>
-</p>
-
 A reference app for the [RunAnywhere Swift SDK](https://github.com/RunanywhereAI/runanywhere-sdks/blob/main/bindings/swift/README.md):
 LLM chat, speech, vision, voice agents, RAG, benchmarks, and model management, running
-on-device on iPhone, iPad, and Mac.
+on-device on iPhone, iPad, and Mac. It ships on the
+[App Store](https://apps.apple.com/us/app/runanywhere/id6756506307).
+
+## Screenshots
+
+Captured on an iPhone 17 Pro simulator running LiquidAI LFM2 1.2B Tool, quantised Q4_K_M,
+through the llama.cpp backend.
+
+| | |
+|---|---|
+| ![Chat with a model loaded](docs/screenshots/03-ready.png) | ![A streamed answer](docs/screenshots/04-chat.png) |
+| Model loaded and ready. The header shows which one is active and that it is local. | An answer, with tokens per second and wall time under it. Nothing left the device. |
+| ![Choosing a model](docs/screenshots/02-model-picker.png) | ![The Advanced hub](docs/screenshots/06-more.png) |
+| The picker recommends a model for the device, and can pull any GGUF from Hugging Face. | Everything beyond chat lives here, grouped by what it does. |
+| ![Segmentation](docs/screenshots/19-segmentation.png) | ![Settings](docs/screenshots/14-settings.png) |
+| Segmentation outlines objects in a photo and labels them. | Settings covers the system prompt, sampling, tool calling, and local storage. |
+
+The image files are in [`docs/screenshots/`](docs/screenshots).
 
 ## Requirements
 

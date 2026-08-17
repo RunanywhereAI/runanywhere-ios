@@ -1402,6 +1402,39 @@ enum ModelCatalogBootstrap {
         )
         logger.info("Apple Neural Engine models registered")
 
+        // --- Speech on the Neural Engine (neurt engine, COREML framework) -------
+        // The first ASR bundle on this engine. Same folder-ref rules as the LLM
+        // entries above: the last segment has no extension, so the SDK pulls every
+        // file under the repo with nested paths preserved, which a .mlpackage
+        // needs because it is a DIRECTORY.
+        //
+        // TWO graphs, `encoder` and `step`, and the decode loop between them runs
+        // on the host: the joint predicts a token AND a duration, and the duration
+        // decides how many encoder frames to skip. That is a runtime-dependent
+        // branch, which a static Core ML graph cannot express.
+        //
+        // Measured on an M4 Max through the SDK's own speech interface: word error
+        // rate 0.0000 against LibriSpeech 1272-128104-0000, 96 ms for a 5.9 s clip.
+        // The iOS SIMULATOR HAS NO NEURAL ENGINE, so Core ML runs this on the CPU
+        // there and the timing means nothing; a device build is the only place the
+        // ANE numbers are real.
+        //
+        // The repo is PRIVATE, so this entry only downloads for an account with
+        // access. Side-load the bundle into the app's Models directory to test
+        // without one.
+        //
+        // memoryRequirement is peak RSS with headroom, not the download. The
+        // download is the resolver's live folder total (1.26 GB), which commons
+        // stamps itself for an HF folder ref.
+        await registerLLM(
+            id: "parakeet-tdt-0.6b-v3-ane",
+            name: "Parakeet TDT 0.6B v3 (NeuRT / Neural Engine)",
+            url: "hf.co/runanywhere/parakeet-tdt-0.6b-v3_ANE",
+            framework: .coreml,
+            modality: .speechRecognition,
+            memoryRequirement: 1_600_000_000
+        )
+
         // --- The SAME model on the other two accelerators -----------------------
         // LFM2.5-2.6B is registered three ways on purpose, so one model can be
         // compared across CPU (llama.cpp), GPU (MLX) and the Neural Engine

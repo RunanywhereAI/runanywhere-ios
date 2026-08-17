@@ -10,6 +10,12 @@ SwiftPM downloads checksum-verified binaries on resolve.
 The app was extracted from the monorepo at release 0.20.17 with history preserved, so every
 path below is relative to this repository's root.
 
+**This repo is the Mac desktop release, not just iOS.** The native macOS target built by
+`./scripts/build_and_run_ios_sample.sh mac` is what ships as RunAnywhere's Mac desktop app
+(App Store / Mac App Store archive, `.dmg` if distributed outside the store) — package and
+release it from here. `runanywhere-electron` is a separate, Windows-only product; it is not
+an alternate distribution channel for the Mac app.
+
 ## Build and run
 
 ```bash
@@ -188,3 +194,21 @@ the Keychain (written in Settings), then `RunAnywhereLocalSecrets.plist` in the 
 credentials the app initializes at `environment: .production`; without them a Debug build
 falls back to `.development` and a Release build calls `fatalError`. See
 `docs/RELEASE_INSTRUCTIONS.md`.
+
+`RunAnywhereLocalSecrets.plist` is gitignored and holds the same production API key +
+backend base URL used by `runanywhere-android`'s `local.properties`,
+`runanywhere-electron`'s `.env`, and `runanywhere-web`'s Vercel production env; ask a
+maintainer for current production credentials. Never commit this file or hardcode the key
+elsewhere.
+
+## Production release requirements
+
+A real App Store readiness pass needs an Apple Distribution signing certificate and
+provisioning profile in the building Mac's keychain — verify with
+`security find-identity -v -p codesigning` before attempting `xcodebuild archive` for an
+actual submission-bound archive. Simulator testing alone does not prove production
+readiness: MLX and some NeuRT/ANE behavior only run on a physical device or native macOS
+(the arm64 simulator returns `false` from `MLX.register()`), so validate on a real device
+or Mac too, not Simulator only. `Package.resolved` must keep pinning
+`github.com/RunanywhereAI/runanywhere-swift` to a real tagged release — never a local path
+override — for a build to count as a production release build.

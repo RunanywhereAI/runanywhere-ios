@@ -111,3 +111,4 @@ weight.bin
 # Local release credentials. This file can be bundled by local release builds,
 # but must never be committed.
 RunAnywhereAI/Resources/RunAnywhereLocalSecrets.plist
+.idea/

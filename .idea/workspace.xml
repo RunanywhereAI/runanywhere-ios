@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="173" type="long" />
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+  </component>
+  <component name="CMakeProjectFlavorService">
+    <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="371d7b06-d3c0-4e7b-909c-0750f793c37e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/Package.resolved" beforeDir="false" afterPath="$PROJECT_DIR$/Package.resolved" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI.xcodeproj/project.pbxproj" beforeDir="false" afterPath="$PROJECT_DIR$/RunAnywhereAI.xcodeproj/project.pbxproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/AppCommands.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/ConsumerAdvancedHubView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/ContentView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/InitializationViews.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/MacSidebar.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/App/RunAnywhereAIApp.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/foundation_models_logo.imageset/9e90f1b5-7847-43ff-8b3c-845ba871c17b.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/foundation_models_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/hugging_face_logo.imageset/9040e226-a7ee-4415-828a-89dfc8f3ecf4.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/hugging_face_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/liquid_ai_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/liquid_ai_logo.imageset/fd5a9ec4-83b1-44fb-9c3e-42cb3e6fba9a.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/llama_logo.imageset/726b7f89-ea77-4702-a086-12836bb31efb.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/llama_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/mistral_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/mistral_logo.imageset/Mistral_AI_logo_(2025–).svg-2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/qwen_logo.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/qwen_logo.imageset/Qwen_logo.svg.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/runanywhere_logo.imageset/Contents.json" beforeDir="false" afterPath="$PROJECT_DIR$/RunAnywhereAI/Assets.xcassets/runanywhere_logo.imageset/Contents.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/AppColors.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/AppSpacing.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/AppType.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/AudioActivityBars.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/EmptyStateMark.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/Haptics.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/Layout.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/Motion.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/Surface.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/Typography.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/DesignSystem/ViewCompatibility.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Models/AppTypes.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Models/MarkdownBlock.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/ConversationStore.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/DeviceInfoService.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/HardwareTier.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/HuggingFaceHubClient.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/KeychainService.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Core/Services/ModelCatalogBootstrap.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Extensions/ModelInfo+Logo.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Extensions/RunAnywhere+ExampleShims.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Extensions/String+Markdown.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Models/BenchmarkStore.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Models/BenchmarkTypes.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Services/BenchmarkRunner.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Services/LLMBenchmarkProvider.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Services/STTBenchmarkProvider.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Services/TTSBenchmarkProvider.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Services/VLMBenchmarkProvider.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Utilities/BenchmarkReportFormatter.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Utilities/BenchmarkShareCardData.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Utilities/SyntheticInputGenerator.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/ViewModels/BenchmarkShareViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/ViewModels/BenchmarkViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Views/BenchmarkDashboardView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Views/BenchmarkDetailView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Views/BenchmarkProgressView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Benchmarks/Views/BenchmarkShareCardView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/ChatAttachmentLoader.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/ChatDocumentAttachment.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/ChatImageAttachment.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/ChatNotificationNames.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/LoraExamplePrompts.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/Message.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Models/MessageAnalytics.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+Analytics.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+Documents.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+Events.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+Generation.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+MessageActions.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+ModelManagement.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+ToolCalling.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel+Vision.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/LLMViewModelTypes.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/ViewModels/ToolCallingModelPolicy.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatDetailsView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatInterfaceView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatLoRASheets.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatMessageAttachmentViews.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatMessageComponents.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatMessageListView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ChatTopBar.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ConversationDrawerView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ModelLoadedToast.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/StreamingTextView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Chat/Views/ToolCallViews.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/ComputerUse/ComputerUseAgentView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/ComputerUse/ComputerUseAgentViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Connect/ConnectClientController.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Connect/ConnectHostManagementView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Connect/ConnectStatusBanner.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Diarization/DiarizationView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Diarization/DiarizationViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/AddFromHuggingFaceView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/AddModelFromURLView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelCompatibilityLookup.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelComponents.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelDownloadProgressView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelDownloadTracker.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelListViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelOrg.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelOrgViews.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelPresentation.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelRecommendation.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelSelectionRows.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelSelectionSheet.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelStatusComponents.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/ModelsSupportingSections.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/RecommendedModelViews.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Models/SimplifiedModelsView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/RAG/Services/DocumentService.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Segmentation/SegmentationView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Segmentation/SegmentationViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Settings/CalendarTool.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Settings/CombinedSettingsView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Settings/HealthKitTool.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Settings/SettingsViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Settings/ToolSettingsView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Storage/StorageViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Vision/VLMCameraPreview.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Vision/VLMCameraView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Vision/VLMViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/AudioCapturePump.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/AudioRouteRow.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/STTViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/SpeechToTextView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/TTSViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/TextToSpeechView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VADViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAISetupView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceActivityDetectionView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAgentTypes.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAgentViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAssistantComponents.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAssistantParticleView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceAssistantView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/Voice/VoiceComponentViewModelBase.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/VoiceKeyboard/DictationActivityAttributes.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/VoiceKeyboard/FlowActivationView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/VoiceKeyboard/FlowSessionManager.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/VoiceKeyboard/VoiceDictationManagementView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Features/VoiceKeyboard/VoiceDictationManagementViewModel.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Helpers/AdaptiveLayout.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Helpers/InlineMarkdownRenderer.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Helpers/SmartMarkdownRenderer.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Resources/RunAnywhereConfig-Debug.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Resources/RunAnywhereConfig-Release.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/RunAnywhereAI-Bridging-Header.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Shared/SharedConstants.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Shared/SharedDataBridge.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAI/Utilities/ModelLogoHelper.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAIUITests/RunAnywhereAIUITestsLaunchTests.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAIUnitTests/HardwareTierTests.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAIUnitTests/ModelOrgCatalogTests.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereAIUnitTests/ModelSelectionContextTests.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/AccentColor.colorset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/AppIcon.appiconset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/WidgetBackground.colorset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/runanywhere_icon.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/runanywhere_icon.imageset/runanywhere_icon@1x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/runanywhere_icon.imageset/runanywhere_icon@2x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Assets.xcassets/runanywhere_icon.imageset/runanywhere_icon@3x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/Info.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/RunAnywhereActivityExtensionBundle.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereActivityExtension/RunAnywhereActivityExtensionLiveActivity.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Assets.xcassets/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Assets.xcassets/runanywhere_icon.imageset/Contents.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Assets.xcassets/runanywhere_icon.imageset/icon@1x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Assets.xcassets/runanywhere_icon.imageset/icon@2x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Assets.xcassets/runanywhere_icon.imageset/icon@3x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/Info.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/KeyboardView.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/KeyboardViewController.swift" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/RunAnywhereKeyboard/RunAnywhereKeyboard.entitlements" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Siddhesh2377&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/RunanywhereAI/runanywhere-ios.git&quot;,
+    &quot;accountId&quot;: &quot;f0f7f88c-5571-4ae5-a67c-999504e99eaf&quot;
+  }
+}</component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="kM6jxJLQ" />
+  </component>
+  <component name="NoctuleProjectWorkspaceSettings">
+    <option name="migratedAutodetectionSetting" value="true" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3Ho1SwIuCjpRQTjmfQJLSJsU37i" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;siddhesh/ios-workflow-work&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/home/Project/runanywhere-ios&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
+  }
+}</component>
+  <component name="SelectedDebugProfileService">{
+  &quot;profileIdByStamp&quot;: [],
+  &quot;modificationCount&quot;: 1
+}</component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="371d7b06-d3c0-4e7b-909c-0750f793c37e" name="Changes" comment="" />
+      <created>1786519610719</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1786519610719</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

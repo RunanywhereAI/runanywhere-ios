@@ -532,7 +532,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RunAnywhereKeyboard/RunAnywhereKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunAnywhereKeyboard/Info.plist;
@@ -544,7 +544,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhere.RunAnywhereKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -563,7 +563,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RunAnywhereKeyboard/RunAnywhereKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunAnywhereKeyboard/Info.plist;
@@ -575,7 +575,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhere.RunAnywhereKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -596,7 +596,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunAnywhereActivityExtension/Info.plist;
@@ -608,7 +608,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhere.RunAnywhereActivityExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -628,7 +628,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunAnywhereActivityExtension/Info.plist;
@@ -640,7 +640,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhere.RunAnywhereActivityExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -782,7 +782,7 @@
 				CODE_SIGN_ENTITLEMENTS = RunAnywhereAI/RunAnywhereAI.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -809,7 +809,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				OTHER_LDFLAGS = "-all_load";
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhere;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -832,7 +832,7 @@
 				CODE_SIGN_ENTITLEMENTS = RunAnywhereAI/RunAnywhereAI.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = L86FH3K93L;
 				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_PREVIEWS = YES;
@@ -860,7 +860,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				OTHER_LDFLAGS = (
 					"-all_load",
 					"-Wl,-exported_symbols_list,$(SRCROOT)/RunAnywhereExportedSymbols.txt",
@@ -883,12 +883,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhereTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -906,11 +906,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhereTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -927,12 +927,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhereUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -949,11 +949,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.38;
+				MARKETING_VERSION = 0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.runanywhere.RunAnywhereUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

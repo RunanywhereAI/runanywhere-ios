@@ -2,9 +2,11 @@
 //  RecommendedModelViews.swift
 //  RunAnywhereAI
 //
-//  Presentation components for the hardware-aware "Recommended for you" hero
-//  section on the Models screen. Kept separate from SimplifiedModelsView so each
-//  view has a single, focused responsibility.
+//  Shared action plumbing for every model row on the Models screen — the
+//  handler bundle every list item takes, and the one primary action button
+//  (Get / Use / Active / Built-in) they all render. The rows themselves are
+//  `ModelVariantRow` (ModelOrgViews.swift), reused everywhere: the family
+//  detail list, the "Recommended for you" hero, and the companions row.
 //
 
 import SwiftUI
@@ -31,8 +33,8 @@ struct ModelActionHandlers {
 }
 
 /// Reusable primary action (Get / Use / Active / Built-in) with inline download
-/// progress. Single responsibility: drive a model's readiness action so the
-/// recommended card and companion chip never duplicate this logic.
+/// progress. Single responsibility: drive a model's readiness action so every
+/// `ModelVariantRow` instance never duplicates this logic.
 struct ModelPrimaryActionButton: View {
     let model: RAModelInfo
     let availabilityReason: String?
@@ -128,121 +130,10 @@ struct ModelPrimaryActionButton: View {
     }
 }
 
-/// Rich, rounded card for a single recommended model in the hero section.
-struct RecommendedModelCard: View {
-    let model: RAModelInfo
-    let subtitle: String
-    let availabilityReason: String?
-    let isSelected: Bool
-    let isLoadingModel: Bool
-    var highlight: String?
-    let handlers: ModelActionHandlers
-
-    var body: some View {
-        HStack(alignment: .top, spacing: AppSpacing.mediumLarge) {
-            capabilityIcon
-
-            VStack(alignment: .leading, spacing: AppSpacing.xSmall) {
-                if let highlight {
-                    Text(highlight.uppercased())
-                        .font(AppTypography.caption2Bold)
-                        .foregroundColor(AppColors.primaryAccent)
-                }
-
-                Text(model.consumerDisplayName)
-                    .font(AppTypography.subheadlineSemibold)
-                    .foregroundColor(AppColors.textPrimary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                // Same reason as `ModelVariantRow`: an in-flight download takes
-                // its share of the row, and a wrapping size label hyphenates
-                // into "762.9 / MB" instead of simply getting tighter.
-                HStack(spacing: AppSpacing.smallMedium) {
-                    Text(subtitle)
-                        .font(AppTypography.caption2)
-                        .foregroundColor(AppColors.textSecondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                    BackendPill(framework: model.framework)
-                }
-
-                tagWrap
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            ModelPrimaryActionButton(
-                model: model,
-                availabilityReason: availabilityReason,
-                isSelected: isSelected,
-                isLoadingModel: isLoadingModel,
-                onSelectModel: { handlers.onSelect(model) },
-                onChanged: handlers.onChanged
-            )
-        }
-        .padding(.vertical, AppSpacing.smallMedium)
-    }
-
-    private var capabilityIcon: some View {
-        Image(systemName: model.category.consumerCapabilityIcon)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundColor(AppColors.primaryAccent)
-            .frame(width: AppSpacing.iconMedium, height: AppSpacing.iconMedium)
-            .background(AppColors.primaryAccent.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cornerRadiusLarge))
-    }
-
-    private var tagWrap: some View {
-        HStack(spacing: AppSpacing.xSmall) {
-            ForEach(model.consumerTags) { badge in
-                ConsumerBadge(badge: badge)
-            }
-        }
-    }
-}
-
-/// Compact chip for the "Also recommended" companions row (VLM/ASR/TTS/embedding).
-struct CompanionModelChip: View {
-    let model: RAModelInfo
-    let isSelected: Bool
-    let isLoadingModel: Bool
-    let handlers: ModelActionHandlers
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xSmall) {
-            HStack(spacing: AppSpacing.xSmall) {
-                Image(systemName: model.category.consumerCapabilityIcon)
-                    .foregroundColor(AppColors.primaryAccent)
-                Text(model.category.consumerCapabilityLabel)
-                    .font(AppTypography.caption2Medium)
-                    .foregroundColor(AppColors.textSecondary)
-            }
-
-            Text(model.consumerDisplayName)
-                .font(AppTypography.caption2)
-                .fontWeight(.semibold)
-                .foregroundColor(AppColors.textPrimary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(model.consumerSizeLabel)
-                .font(AppTypography.caption2)
-                .foregroundColor(AppColors.textSecondary)
-
-            Spacer(minLength: 0)
-
-            ModelPrimaryActionButton(
-                model: model,
-                availabilityReason: nil,
-                isSelected: isSelected,
-                isLoadingModel: isLoadingModel,
-                onSelectModel: { handlers.onSelect(model) },
-                onChanged: handlers.onChanged
-            )
-        }
-        .padding(AppSpacing.mediumLarge)
-        .frame(width: 180, height: 148, alignment: .leading)
-        .background(AppColors.backgroundSecondary)
-        .cornerRadius(AppSpacing.cornerRadiusCard)
-    }
-}
+// The hero "Recommended" card and the companions row used to be two more
+// bespoke row types (`RecommendedModelCard`, `CompanionModelChip`) that
+// duplicated `ModelVariantRow`'s layout and had no delete action wired in —
+// a downloaded model surfaced up here was unreachable from the family-detail
+// list (which excludes surfaced ids) and so had NO way to be deleted. Both
+// are gone now; every model list in the app renders through the one
+// `ModelVariantRow` (`leadingIcon:` covers the hero's capability glyph).

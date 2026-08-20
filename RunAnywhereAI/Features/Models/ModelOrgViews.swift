@@ -102,6 +102,10 @@ struct ModelVariantRow: View {
     let variant: RAModelInfo
     var feelDescriptor: String?
     var highlight: String?
+    /// SF Symbol for an optional leading capability icon (used by the
+    /// "Recommended for you" hero, where each row spans a different
+    /// modality). Family-detail listings leave this nil.
+    var leadingIcon: String?
     let availabilityReason: String?
     let isSelected: Bool
     let isLoadingModel: Bool
@@ -113,6 +117,10 @@ struct ModelVariantRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: AppSpacing.mediumLarge) {
+            if let leadingIcon {
+                capabilityIcon(leadingIcon)
+            }
+
             VStack(alignment: .leading, spacing: AppSpacing.xSmall) {
                 if let highlight {
                     Text(highlight.uppercased())
@@ -187,6 +195,15 @@ struct ModelVariantRow: View {
                 .accessibilityLabel("Delete \(variant.consumerDisplayName)")
             }
         }
+    }
+
+    private func capabilityIcon(_ systemImage: String) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(AppColors.primaryAccent)
+            .frame(width: AppSpacing.iconMedium, height: AppSpacing.iconMedium)
+            .background(AppColors.primaryAccent.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.cornerRadiusLarge))
     }
 }
 

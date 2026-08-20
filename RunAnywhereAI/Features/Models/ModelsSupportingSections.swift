@@ -194,6 +194,7 @@ struct DeviceSummarySection: View {
 /// Storage usage summary + cache maintenance actions.
 struct ModelStorageSection: View {
     @ObservedObject var storageViewModel: StorageViewModel
+    @State private var showDeleteAllConfirmation = false
 
     var body: some View {
         Section {
@@ -219,6 +220,10 @@ struct ModelStorageSection: View {
                 )
                 maintenanceButtons
 
+                if !storageViewModel.storedModels.isEmpty {
+                    deleteAllButton
+                }
+
                 if let error = storageViewModel.errorMessage {
                     Text(error)
                         .font(AppTypography.caption)
@@ -228,9 +233,31 @@ struct ModelStorageSection: View {
         } header: {
             Text("Storage")
         } footer: {
-            Text("Downloaded models can be removed from a model's family detail.")
+            Text("Downloaded models can be removed individually, or all at once from here.")
                 .font(AppTypography.caption)
         }
+        .confirmationDialog(
+            "Delete All Downloaded Models?",
+            isPresented: $showDeleteAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete \(storageViewModel.storedModels.count) Models", role: .destructive) {
+                Task { await storageViewModel.deleteAllModels() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This frees \(storageViewModel.formattedModelStorage) but you'll need to download any of them again to use them.")
+        }
+    }
+
+    private var deleteAllButton: some View {
+        Button(role: .destructive) {
+            showDeleteAllConfirmation = true
+        } label: {
+            Label("Delete All Models", systemImage: "trash")
+        }
+        .font(AppTypography.caption)
+        .foregroundColor(AppColors.primaryRed)
     }
 
     /// Two maintenance actions, two distinct glyphs.

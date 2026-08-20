@@ -95,4 +95,25 @@ class StorageViewModel: ObservableObject {
         // there and fail to load when tapped.
         await ModelListViewModel.shared.loadModelsFromRegistry()
     }
+
+    /// Delete every downloaded model in one pass. One failure doesn't stop the
+    /// rest — `errorMessage` reports the last one so the sweep isn't silently
+    /// partial, and both tabs still get a single refresh at the end.
+    func deleteAllModels() async {
+        let modelsToDelete = storedModels
+        guard !modelsToDelete.isEmpty else { return }
+
+        var lastError: String?
+        for model in modelsToDelete {
+            do {
+                try await RunAnywhere.models.delete(id: model.id)
+            } catch {
+                lastError = "Failed to delete \(model.name): \(error.localizedDescription)"
+            }
+        }
+        errorMessage = lastError
+
+        await refreshData()
+        await ModelListViewModel.shared.loadModelsFromRegistry()
+    }
 }

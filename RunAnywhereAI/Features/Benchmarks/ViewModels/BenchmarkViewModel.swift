@@ -140,17 +140,16 @@ final class BenchmarkViewModel {
     private func executeBenchmarkRun() async {
         await reloadAvailableModels()
 
-        let availableIds = Set(availableModels.values.flatMap { $0 }.map { $0.id })
-        if !availableIds.isEmpty {
-            selectedModelIds = availableIds
-        }
         let categoriesToRun = categoriesReadyToRun()
 
         let deviceInfo = makeDeviceInfo()
         var run = BenchmarkRun(deviceInfo: deviceInfo)
 
         do {
-            let modelIds: Set<String>? = availableIds.isEmpty ? nil : availableIds
+            // `reloadAvailableModels()` already reconciles `selectedModelIds` against
+            // what's actually on disk, so honor the user's picks here rather than
+            // silently re-expanding to every downloaded model.
+            let modelIds: Set<String>? = selectedModelIds.isEmpty ? nil : selectedModelIds
             let output = try await runner.runBenchmarks(
                 categories: categoriesToRun,
                 modelIds: modelIds,

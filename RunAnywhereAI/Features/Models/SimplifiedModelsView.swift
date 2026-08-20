@@ -193,18 +193,11 @@ struct SimplifiedModelsView: View {
                     }
 
                     ForEach(recommendedLLMCards, id: \.id) { model in
-                        RecommendedModelCard(
-                            model: model,
-                            subtitle: model.tagline,
-                            availabilityReason: unavailableReason(for: model),
-                            isSelected: selectedModel?.id == model.id,
-                            isLoadingModel: viewModel.isLoadingModel,
-                            handlers: handlers
-                        )
+                        recommendedRow(for: model, highlight: nil)
                     }
 
-                    if !recommendation.companions.isEmpty {
-                        companionsRow
+                    ForEach(recommendation.companions, id: \.id) { model in
+                        recommendedRow(for: model, highlight: nil)
                     }
                 } header: {
                     Text("Recommended for \(recommendedHeaderDeviceName)")
@@ -238,38 +231,22 @@ struct SimplifiedModelsView: View {
     }
 
     private func defaultModelCard(_ model: RAModelInfo) -> some View {
-        RecommendedModelCard(
-            model: model,
-            subtitle: model.tagline,
+        recommendedRow(for: model, highlight: model.isBuiltIn ? "Best for this device" : "Default")
+    }
+
+    /// Every model on this screen — hero pick, companion, or family-detail
+    /// variant — renders through this one row so the delete action (and any
+    /// future per-row behavior) exists in exactly one place.
+    private func recommendedRow(for model: RAModelInfo, highlight: String?) -> some View {
+        ModelVariantRow(
+            variant: model,
+            highlight: highlight,
+            leadingIcon: model.category.consumerCapabilityIcon,
             availabilityReason: unavailableReason(for: model),
             isSelected: selectedModel?.id == model.id,
             isLoadingModel: viewModel.isLoadingModel,
-            highlight: model.isBuiltIn ? "Best for this device" : "Default",
             handlers: handlers
         )
-    }
-
-    private var companionsRow: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.smallMedium) {
-            Text("Also recommended")
-                .font(AppTypography.captionMedium)
-                .foregroundColor(AppColors.textSecondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppSpacing.smallMedium) {
-                    ForEach(recommendation.companions, id: \.id) { model in
-                        CompanionModelChip(
-                            model: model,
-                            isSelected: selectedModel?.id == model.id,
-                            isLoadingModel: viewModel.isLoadingModel,
-                            handlers: handlers
-                        )
-                    }
-                }
-                .padding(.vertical, AppSpacing.xxSmall)
-            }
-        }
-        .padding(.vertical, AppSpacing.xSmall)
     }
 
     // MARK: - Browse by family
@@ -351,15 +328,6 @@ struct SimplifiedModelsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AppSpacing.xLarge)
-    }
-}
-
-// MARK: - Recommended card subtitle
-
-private extension RAModelInfo {
-    /// One friendly line for a recommended card — size only, no technical terms.
-    var tagline: String {
-        isBuiltIn ? "Built in · no download" : consumerSizeLabel
     }
 }
 

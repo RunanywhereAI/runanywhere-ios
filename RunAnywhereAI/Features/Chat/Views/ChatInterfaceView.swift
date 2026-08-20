@@ -71,6 +71,16 @@ struct ChatInterfaceView: View {
     @State private var selectedDocumentAnswerModel: RAModelInfo?
     @State private var isVisionModelReady = false
     @State private var errorMessage: String?
+    /// Why the last file the user chose was not attached, or nil.
+    ///
+    /// Shown next to the composer rather than raised as an alert: the user is
+    /// mid-compose and the remedy is to pick a different file, not to dismiss
+    /// something.
+    @State private var attachmentRejection: String?
+    #if os(iOS)
+    @Environment(\.verticalSizeClass)
+    private var verticalSizeClass
+    #endif
     @State private var showModelLoadedToast = false
     @State private var showingLoRAScaleSheet = false
     @State private var showingLoRAManagement = false
@@ -527,34 +537,82 @@ extension ChatInterfaceView {
                 settingsViewModel: settingsViewModel,
                 toolSettingsViewModel: toolSettingsViewModel
             )
-            ChatInputAreaView(
-                viewModel: viewModel,
-                isTextFieldFocused: $isTextFieldFocused,
-                showingLoRAManagement: $showingLoRAManagement,
-                settingsViewModel: settingsViewModel,
-                toolSettingsViewModel: toolSettingsViewModel,
-                imageAttachment: pendingImageAttachment,
-                documentAttachment: pendingDocumentAttachment,
-                isVisionModelReady: isVisionModelReady,
-                areDocumentModelsReady: areDocumentModelsReady,
-                canSendCurrentTurn: canSendCurrentTurn,
-                onRemoveImageAttachment: {
-                    pendingImageAttachment = nil
-                },
-                onRemoveDocumentAttachment: {
-                    pendingDocumentAttachment = nil
-                    viewModel.setDocumentIndexState(.notIndexed)
-                },
-                onChooseVisionModel: {
-                    showingVisionModelSelection = true
-                },
-                onChooseDocumentModels: {
-                    showNextDocumentModelPicker()
-                },
-                onComposerAction: handleComposerAction,
-                onSend: sendMessage
-            )
+
+            // Suggestions belong to the composer, not the transcript: they are
+            // what the reader reaches for next, so they sit against the editor
+            // rather than under a greeting a screen away. Withdrawn once a turn
+            // exists, and while the keyboard is up — a raised keyboard has
+            // already halved the viewport and the chips would take a third of
+            // what is left.
+            VStack(spacing: 0) {
+                if viewModel.messages.isEmpty && !isTextFieldFocused {
+                    ChatPromptSuggestionsRow(prompts: suggestionSet) { prompt in
+                        viewModel.currentInput = prompt.text
+                        isTextFieldFocused = true
+                    }
+                    .padding(.vertical, Space.sm)
+                    .transition(.opacity)
+                }
+
+                composerBar
+            }
+            .background(ComposerPalette.barFill)
         }
+        .motionAware(Motion.standardFade, value: viewModel.messages.isEmpty)
+        .motionAware(Motion.standardFade, value: isTextFieldFocused)
+    }
+
+    private var suggestionSet: [StarterPrompt] {
+        StarterPrompt.set(
+            toolsEnabled: viewModel.toolsEnabled,
+            loraActive: !viewModel.loraAdapters.isEmpty
+        )
+    }
+
+    private var composerBar: some View {
+        ChatComposerBar(
+            viewModel: viewModel,
+            isTextFieldFocused: $isTextFieldFocused,
+            imageAttachment: pendingImageAttachment,
+            documentAttachment: pendingDocumentAttachment,
+            attachmentRejection: attachmentRejection,
+            isVisionModelReady: isVisionModelReady,
+            areDocumentModelsReady: areDocumentModelsReady,
+            canSendCurrentTurn: canSendCurrentTurn,
+            compact: isCompactComposer,
+            onRemoveImageAttachment: {
+                pendingImageAttachment = nil
+            },
+            onRemoveDocumentAttachment: {
+                pendingDocumentAttachment = nil
+                viewModel.setDocumentIndexState(.notIndexed)
+            },
+            onDismissAttachmentRejection: {
+                attachmentRejection = nil
+            },
+            onChooseVisionModel: {
+                showingVisionModelSelection = true
+            },
+            onChooseDocumentModels: {
+                showNextDocumentModelPicker()
+            },
+            onResolveBlocked: {
+                showingModelSelection = true
+            },
+            onComposerAction: handleComposerAction,
+            onSend: sendMessage
+        )
+    }
+
+    /// A landscape phone with the keyboard up cannot fit the status strips and
+    /// the editor at once. `verticalSizeClass` is the platform's own name for
+    /// that viewport, and it stands in for Android's measured IME-safe height.
+    private var isCompactComposer: Bool {
+        #if os(iOS)
+        verticalSizeClass == .compact
+        #else
+        false
+        #endif
     }
 
     /// What a drag over the transcript looks like.
@@ -722,17 +780,21 @@ extension ChatInterfaceView {
             Task { @MainActor in
                 do {
                     guard let attachment = try await ChatAttachmentLoader.pasteboardAttachment() else {
-                        errorMessage = "There's nothing on the clipboard the chat can use. "
+                        attachmentRejection = "There's nothing on the clipboard the chat can use. "
                             + "Copy an image, or a PDF, .txt, .md, or .json file."
                         return
                     }
                     stage(attachment)
                 } catch {
-                    errorMessage = error.localizedDescription
+                    attachmentRejection = error.localizedDescription
                 }
             }
         case .talk:
             showingTalkMode = true
+        case .openAdvanced:
+            #if os(iOS)
+            showingAdvancedHub = true
+            #endif
         }
     }
 
@@ -783,10 +845,11 @@ extension ChatInterfaceView {
                         filename: provider.suggestedName ?? "Dropped image"
                     )))
                 } else {
-                    errorMessage = "That can't be attached. Use an image, or a PDF, .txt, .md, or .json file."
+                    attachmentRejection = "That can't be attached. "
+                        + "Use an image, or a PDF, .txt, .md, or .json file."
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                attachmentRejection = error.localizedDescription
             }
         }
         return true
@@ -901,7 +964,7 @@ extension ChatInterfaceView {
         do {
             stage(.image(try await ChatAttachmentLoader.imageAttachment(from: item)))
         } catch {
-            errorMessage = error.localizedDescription
+            attachmentRejection = error.localizedDescription
         }
     }
 
@@ -923,11 +986,11 @@ extension ChatInterfaceView {
                     // size are still checked here.
                     stage(try await ChatAttachmentLoader.attachment(forFileAt: url))
                 } catch {
-                    errorMessage = error.localizedDescription
+                    attachmentRejection = error.localizedDescription
                 }
             }
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            attachmentRejection = error.localizedDescription
         }
     }
 

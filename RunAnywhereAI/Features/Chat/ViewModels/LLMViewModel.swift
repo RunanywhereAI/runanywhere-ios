@@ -27,6 +27,13 @@ final class LLMViewModel {
 
     private(set) var messages: [Message] = []
     private(set) var isGenerating = false
+    /// Cancellation has been asked for but the stream has not unwound yet.
+    ///
+    /// A separate flag from `isGenerating` because `stopGeneration` deliberately
+    /// leaves that one alone — the in-flight turn owns its true->false edge.
+    /// Without this the composer has nothing to say during the gap, and a Stop
+    /// that takes a second looks like a button that did nothing.
+    private(set) var isStopping = false
     private(set) var error: Error?
     private(set) var isModelLoaded = false
     private(set) var loadedModelName: String?
@@ -175,6 +182,7 @@ final class LLMViewModel {
 
     func setIsGenerating(_ value: Bool) {
         isGenerating = value
+        if !value { isStopping = false }
     }
 
     /// True while the generation started for `generatingConversationId` still
@@ -296,8 +304,61 @@ final class LLMViewModel {
 
     var canSend: Bool {
         !currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        && !isGenerating
+        && !isBusy
         && isModelLoaded
+    }
+
+    /// Inference or its cancellation owns the chat.
+    var isBusy: Bool { isGenerating || isStopping }
+
+    /// A local model is resident, or a hosted one is reachable.
+    var hasUsableModel: Bool { isModelLoaded || isUsingConnect }
+
+    /// Why a written message cannot be sent, or nil when nothing is in the way.
+    ///
+    /// Only ever about the model. Sending and stopping already have their own
+    /// affordances in the composer, and repeating them here would make it shout
+    /// through every normal turn.
+    var sendBlockedReason: String? {
+        hasUsableModel ? nil : "No model is loaded yet."
+    }
+
+    /// Whether the loaded model can emit a reasoning trace at all.
+    ///
+    /// Distinct from `thinkingEnabled`, which is the user's preference. NPU
+    /// batch backends decode a whole reply at once and cannot stream a trace, so
+    /// the capability is withheld there regardless of what the model declares.
+    var thinkingSupported: Bool {
+        guard isModelLoaded, selectedFramework != .qhexrt else { return false }
+        return loadedModelSupportsThinking
+    }
+
+    var thinkingEnabled: Bool {
+        thinkingSupported && SettingsViewModel.shared.thinkingModeEnabled
+    }
+
+    func toggleThinking() {
+        guard thinkingSupported else { return }
+        SettingsViewModel.shared.thinkingModeEnabled.toggle()
+    }
+
+    /// Tools are on for the next turn: the user asked for them and the loaded
+    /// model can actually carry them.
+    var toolsEnabled: Bool {
+        !isUsingConnect
+        && useToolCalling
+        && ToolCallingModelPolicy.evaluate(model: ModelListViewModel.shared.currentModel).isAvailable
+    }
+
+    /// Why tools cannot run, or nil. Only spoken when the user has asked for
+    /// them — an unrequested capability has nothing to explain.
+    var toolsUnavailableMessage: String? {
+        guard useToolCalling else { return nil }
+        if isUsingConnect {
+            return "Web & tools are unavailable while using a hosted model."
+        }
+        let availability = ToolCallingModelPolicy.evaluate(model: ModelListViewModel.shared.currentModel)
+        return availability.isAvailable ? nil : availability.message
     }
 
     /// `Error` is not `Equatable`, so a view cannot `.onChange(of: error)`. This
@@ -387,6 +448,7 @@ final class LLMViewModel {
         conversationStore.cancelPendingTitleGeneration()
 
         isGenerating = true
+        isStopping = false
         error = nil
         generationStartedAt = Date()
 
@@ -538,6 +600,7 @@ final class LLMViewModel {
         // `canSend` false until the stream has actually stopped — otherwise a
         // second `sendMessage()` could start and overlap the still-running
         // generation on the single-callback LLM component.
+        isStopping = true
         generationTask?.cancel()
 
         #if os(iOS)

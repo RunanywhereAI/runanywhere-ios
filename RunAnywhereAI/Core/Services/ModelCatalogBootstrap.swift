@@ -31,56 +31,6 @@ enum ModelCatalogBootstrap {
         logger.info("Registering modules with their models...")
 
         #if canImport(LlamaCPPRuntime)
-        // --- LLM models (LlamaCpp backend) ------------------------------------
-        await registerLLM(
-            id: "smollm2-360m-q8_0",
-            name: "SmolLM2 360M Q8_0",
-            url: "https://huggingface.co/prithivMLmods/SmolLM2-360M-GGUF/resolve/main/SmolLM2-360M.Q8_0.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 386_404_416
-        )
-        await registerLLM(
-            id: "llama-2-7b-chat-q4_k_m",
-            name: "Llama 2 7B Chat Q4_K_M",
-            url: "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 4_000_000_000
-        )
-        await registerLLM(
-            id: "mistral-7b-instruct-q4_k_m",
-            name: "Mistral 7B Instruct Q4_K_M",
-            url: "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 4_000_000_000
-        )
-        await registerLLM(
-            id: "qwen2.5-0.5b-instruct-q6_k",
-            name: "Qwen 2.5 0.5B Instruct Q6_K",
-            url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q6_k.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 600_000_000,
-            // Base model of the seeded abliterated adapter
-            // (qwen2.5-0.5b-abliterated-lora-f16.gguf) — matches Android.
-            supportsLora: true
-        )
-        await registerLLM(
-            id: "qwen2.5-1.5b-instruct-q4_k_m",
-            name: "Qwen 2.5 1.5B Instruct Q4_K_M",
-            url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 2_500_000_000
-        )
-        // ONE quantization per model. The Q8_0 sibling of this row was removed
-        // deliberately: two quants of the same 350M model differ only in bytes
-        // (229 MB vs 379 MB), so the second row costs a catalog slot and a
-        // "which one do I pick?" decision without adding a capability.
-        await registerLLM(
-            id: "lfm2-350m-q4_k_m",
-            name: "LiquidAI LFM2 350M Q4_K_M",
-            url: "https://huggingface.co/LiquidAI/LFM2-350M-GGUF/resolve/main/LFM2-350M-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 250_000_000
-        )
         // LFM2.5-230M on the CPU. Q4_K_M, not the fractionally smaller Q4_0
         // (149 MB vs 153 MB): 4 MB buys K-quant mixed precision on the
         // attention/embedding tensors, and Q4_K_M is the quantization every
@@ -100,28 +50,6 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 900_000_000
         )
-        await registerLLM(
-            id: "lfm2-1.2b-tool-q4_k_m",
-            name: "LiquidAI LFM2 1.2B Tool Q4_K_M",
-            url: "https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF/resolve/main/LFM2-1.2B-Tool-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 800_000_000
-        )
-        await registerLLM(
-            id: "lfm2-1.2b-tool-q8_0",
-            name: "LiquidAI LFM2 1.2B Tool Q8_0",
-            url: "https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF/resolve/main/LFM2-1.2B-Tool-Q8_0.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 1_400_000_000
-        )
-        await registerLLM(
-            id: "qwen3-0.6b-q4_k_m",
-            name: "Qwen3 0.6B Q4_K_M",
-            url: "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 500_000_000,
-            supportsThinking: true
-        )
         // unsloth, not bartowski: the bartowski repo prefixes every artifact with
         // the org (`Qwen_Qwen3.5-0.8B-Q4_K_M.gguf`), so the un-prefixed filename
         // this row used to point at 404'd — the row was offered in the picker and
@@ -135,28 +63,12 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 620_000_000,
             supportsThinking: true
         )
-        await registerLLM(
-            id: "qwen3-1.7b-q4_k_m",
-            name: "Qwen3 1.7B Q4_K_M",
-            url: "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 1_200_000_000,
-            supportsThinking: true
-        )
-        await registerLLM(
-            id: "qwen3-4b-q4_k_m",
-            name: "Qwen3 4B Q4_K_M",
-            url: "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 2_800_000_000,
-            supportsThinking: true
-        )
         // Qwen3.8-27B, the newest dense Qwen release (unsloth-published GGUF,
         // matching the rest of the Qwen3.x rows in this catalog).
         await registerLLM(
             id: "qwen3.8-27b-q4_k_m",
             name: "Qwen3.8 27B Q4_K_M",
-            url: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf",
+            url: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-UD-Q4_K_M.gguf",
             framework: .llamaCpp,
             // 17,106,775,008 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 18_800_000_000,
@@ -270,18 +182,6 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 3_803_452_480,
             supportsThinking: true
         )
-        // NOTE: Ternary-Bonsai GGUF (Q2_0/PQ2_0) is intentionally NOT registered.
-        // Verified via rcli this session: the pinned PrismML llama.cpp fork
-        // (prism-b9591-62061f9) rejects it — "invalid ggml type 142" — it only
-        // added Q1_0 (plain Bonsai) support, not Ternary-Bonsai's tensor encoding.
-        // Re-enable once the fork adds it. Ternary-Bonsai MLX (below) works fine.
-        await registerLLM(
-            id: "llama-3.2-3b-instruct-q4_k_m",
-            name: "Llama 3.2 3B Instruct Q4_K_M (Tool Calling)",
-            url: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
-            framework: .llamaCpp,
-            memoryRequirement: 2_000_000_000
-        )
         // Gemma 4 family, text-only (unsloth GGUF, no mmproj). Distinct from
         // the Gemma 4 E2B/E4B VLM rows above (`ggml-org` repo, decoder+mmproj
         // pairs) — those are multimodal registrations; these are plain
@@ -332,14 +232,6 @@ enum ModelCatalogBootstrap {
             // 18,323,733,440 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 20_200_000_000
         )
-        await registerLLM(
-            id: "gemma-4-31b-it-q2_k_xl",
-            name: "Gemma 4 31B IT Q2_K_XL",
-            url: "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-UD-Q2_K_XL.gguf",
-            framework: .llamaCpp,
-            // 11,774,991,296 B of weights plus KV cache and runtime overhead.
-            memoryRequirement: 13_500_000_000
-        )
         // IBM Granite 4.1 family, dense, Apache 2.0 (confirmed via HF
         // cardData.license). unsloth GGUF across all three sizes.
         await registerLLM(
@@ -373,21 +265,36 @@ enum ModelCatalogBootstrap {
         )
         logger.info("LLM models registered")
         #endif
-
-        // --- MLX models (Apple Metal, Hugging Face repo-folder bundles) -------
-        await registerLLM(
-            id: "mlx-qwen3-0.6b-4bit",
-            name: "MLX Qwen3 0.6B 4bit",
-            url: "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit",
-            framework: .mlx,
-            memoryRequirement: 650_000_000,
-            supportsThinking: true
-        )
         // This conversion declares model_type=llama, which is implemented by
         // the linked MLXLLM factory. Keep the complete download manifest pinned
         // to the reviewed Hub revision; the byte total below is exact.
         let nemotronNano8BMLXBaseURL =
             "https://huggingface.co/bourn23/nvidia-llama-3.1-nemotron-nano-8b-v1-mlx-4bit/resolve/00378e66048eadf358aad0f66c09e5c3750f8243"
+        // --- MLX models (Apple Metal, Hugging Face repo-folder bundles) -------
+        await registerLLM(
+            id: "mlx-qwen3.5-2b-4bit",
+            name: "MLX Qwen3.5 2B 4bit",
+            url: "https://huggingface.co/mlx-community/Qwen3.5-2B-MLX-4bit",
+            framework: .mlx,
+            memoryRequirement: 2_000_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "mlx-qwen3.5-4b-4bit",
+            name: "MLX Qwen3.5 4B 4bit",
+            url: "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit",
+            framework: .mlx,
+            memoryRequirement: 3_600_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "mlx-qwen3.5-9b-4bit",
+            name: "MLX Qwen3.5 9B 4bit",
+            url: "https://huggingface.co/mlx-community/Qwen3.5-9B-MLX-4bit",
+            framework: .mlx,
+            memoryRequirement: 7_000_000_000,
+            supportsThinking: true
+        )
         await registerMultiFile(
             id: "mlx-llama-3.1-nemotron-nano-8b-v1-4bit",
             name: "MLX NVIDIA Llama 3.1 Nemotron Nano 8B 4bit",
@@ -519,41 +426,6 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 5_129_115_752,
             supportsThinking: true
         )
-        // PrismML Ternary-Bonsai family at ternary/2-bit MLX. Same PrismML
-        // mlx-swift fork (bits=2 quantization support already covered by
-        // upstream MLX 0.31.6 — no additional patch needed beyond bits=1).
-        await registerLLM(
-            id: "mlx-ternary-bonsai-1.7b-2bit",
-            name: "MLX Ternary-Bonsai-1.7B 2-bit",
-            url: "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-mlx-2bit",
-            framework: .mlx,
-            memoryRequirement: 484_049_216,
-            supportsThinking: true
-        )
-        await registerLLM(
-            id: "mlx-ternary-bonsai-4b-2bit",
-            name: "MLX Ternary-Bonsai-4B 2-bit",
-            url: "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-mlx-2bit",
-            framework: .mlx,
-            memoryRequirement: 1_131_565_944,
-            supportsThinking: true
-        )
-        await registerLLM(
-            id: "mlx-ternary-bonsai-8b-2bit",
-            name: "MLX Ternary-Bonsai-8B 2-bit",
-            url: "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-mlx-2bit",
-            framework: .mlx,
-            memoryRequirement: 2_303_661_704,
-            supportsThinking: true
-        )
-        await registerLLM(
-            id: "mlx-ternary-bonsai-27b-2bit",
-            name: "MLX Ternary-Bonsai-27B 2-bit",
-            url: "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-mlx-2bit",
-            framework: .mlx,
-            memoryRequirement: 8_490_785_104,
-            supportsThinking: true
-        )
         await registerLLM(
             id: "mlx-qwen3.5-0.8b-mlx-4bit",
             name: "MLX Qwen3.5 0.8B 4bit",
@@ -561,13 +433,6 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 622_000_000,
             supportsThinking: true
-        )
-        await registerLLM(
-            id: "mlx-llama-3.2-1b-instruct-4bit",
-            name: "MLX Llama 3.2 1B Instruct 4bit",
-            url: "https://huggingface.co/mlx-community/Llama-3.2-1B-Instruct-4bit",
-            framework: .mlx,
-            memoryRequirement: 900_000_000
         )
         // A PLAIN REPO ref, not a `/4bit` subfolder ref like LFM2.5-2.6B-MLX
         // below. LiquidAI publishes one precision per repo here — the 4-bit
@@ -583,26 +448,11 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 200_000_000
         )
         await registerLLM(
-            id: "mlx-lfm2-350m",
-            name: "MLX LFM2 350M",
-            url: "https://huggingface.co/mlx-community/LFM2-350M-MLX",
-            framework: .mlx,
-            memoryRequirement: 709_000_000
-        )
-        await registerLLM(
             id: "mlx-lfm2.5-1.2b-instruct-4bit",
             name: "MLX LFM2.5 1.2B Instruct 4bit",
             url: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-MLX-4bit",
             framework: .mlx,
             memoryRequirement: 628_000_000
-        )
-        await registerLLM(
-            id: "mlx-qwen3-4b-4bit",
-            name: "MLX Qwen3 4B 4bit",
-            url: "https://huggingface.co/mlx-community/Qwen3-4B-4bit",
-            framework: .mlx,
-            memoryRequirement: 2_400_000_000,
-            supportsThinking: true
         )
         await registerLLM(
             id: "mlx-qwen3.8-27b-4bit",
@@ -647,49 +497,6 @@ enum ModelCatalogBootstrap {
             // 18,041,244,771 B for the whole repo plus KV cache and Metal
             // runtime overhead.
             memoryRequirement: 19_800_000_000
-        )
-        // NOTE: No MLX Gemma 4 checkpoint of ANY size (E2B/E4B/12B/26B-A4B/31B)
-        // is registered here. Their attention layers use an asymmetric QK-norm
-        // (some layers ship `self_attn.q_norm` without a matching
-        // `self_attn.k_norm`), but mlx-swift-lm 3.31.4's `Gemma4TextAttention`
-        // unconditionally loads `self_attn.k_norm.weight` and aborts with
-        // `keyNotFound` on the first such layer — so they download fully and
-        // then fail to load. This is architectural, not per-size, so it blocks
-        // every Gemma 4 MLX checkpoint until mlx-swift-lm makes per-layer
-        // k_norm optional. The GGUF (llama.cpp) Gemma 4 variants in the LLM
-        // section above load fine and remain available at every size.
-        //
-        // NOTE: No MLX row for `mlx-community/Muse-Glimmer-30B-4bit` either.
-        // Verified against the pinned mlx-swift-lm 3.31.4 checkout: this
-        // repo's config.json declares `model_type: "muse_glimmer"`, which is
-        // NOT among VLMModelFactory's registered types (paligemma, qwen2_vl,
-        // qwen2_5_vl, qwen3_vl, qwen3_5[_moe], idefics3, gemma3, gemma4[_unified],
-        // smolvlm, fastvlm, llava_qwen2, pixtral, mistral3, lfm2_vl, glm_ocr —
-        // no "muse_glimmer" anywhere) — it would download in full and then
-        // fail to load. Separately, this exact repo's advertised size is
-        // wrong: the coordinator-supplied ~19.4 GB estimate does not match
-        // what the HF blobs API reports for this repo (4 safetensors shards
-        // totaling 39,443,521,145 B, ~39.4 GB — roughly 2x), most likely
-        // because the vision tower and/or embeddings are kept at higher
-        // precision even under a nominal "4bit" LLM quant. The GGUF
-        // (llama.cpp) row below is unaffected and is the only Muse Glimmer
-        // row in this catalog.
-        //
-        // NOTE: No MLX row for
-        // `mlx-community/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-4bit` either,
-        // for the same reason: its config.json declares
-        // `model_type: "NemotronH_Nano_Omni_Reasoning_V3"`. VLMModelFactory
-        // has zero Nemotron entries of any kind, and LLMModelFactory's only
-        // Nemotron entry, `"nemotron_h"`, is a different, non-matching string
-        // (and is text-only — it has no vision path regardless). The GGUF
-        // (llama.cpp) row below is the only way this model is exposed here.
-        await registerLLM(
-            id: "mlx-qwen2-vl-2b-instruct-4bit",
-            name: "MLX Qwen2-VL 2B Instruct 4bit",
-            url: "https://huggingface.co/mlx-community/Qwen2-VL-2B-Instruct-4bit",
-            framework: .mlx,
-            modality: .multimodal,
-            memoryRequirement: 2_200_000_000
         )
         await registerLLM(
             id: "mlx-qwen3-vl-4b-instruct-4bit",
@@ -771,32 +578,6 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 600_000_000
         )
         await registerMultiFile(
-            id: "qwen2-vl-2b-instruct-q4_k_m",
-            name: "Qwen2-VL 2B Instruct",
-            files: [
-                ("https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf",
-                 "Qwen2-VL-2B-Instruct-Q4_K_M.gguf"),
-                ("https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf",
-                 "mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf")
-            ],
-            framework: .llamaCpp,
-            modality: .multimodal,
-            memoryRequirement: 1_800_000_000
-        )
-        await registerMultiFile(
-            id: "qwen2.5-vl-3b-instruct-q4_k_m",
-            name: "Qwen2.5-VL 3B Instruct Q4_K_M",
-            files: [
-                ("https://huggingface.co/ggml-org/Qwen2.5-VL-3B-Instruct-GGUF/resolve/main/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
-                 "Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf"),
-                ("https://huggingface.co/ggml-org/Qwen2.5-VL-3B-Instruct-GGUF/resolve/main/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
-                 "mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf")
-            ],
-            framework: .llamaCpp,
-            modality: .multimodal,
-            memoryRequirement: 2_800_000_000
-        )
-        await registerMultiFile(
             id: "gemma-4-e2b-it-q8_0",
             name: "Gemma 4 E2B IT Q8_0 (Experimental)",
             files: [
@@ -813,27 +594,15 @@ enum ModelCatalogBootstrap {
             id: "gemma-4-e4b-it-q4_k_m",
             name: "Gemma 4 E4B IT Q4_K_M (Experimental)",
             files: [
-                ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
-                 "gemma-4-E4B-it-Q4_K_M.gguf"),
+                // ggml-org publishes no Q4_K_M for this repo — Q4_0 is its only 4-bit build.
+                ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_0.gguf",
+                 "gemma-4-E4B-it-Q4_0.gguf"),
                 ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/mmproj-gemma-4-E4B-it-Q8_0.gguf",
                  "mmproj-gemma-4-E4B-it-Q8_0.gguf")
             ],
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 5_500_000_000
-        )
-        await registerMultiFile(
-            id: "lfm2-vl-450m-q8_0",
-            name: "LFM2-VL 450M",
-            files: [
-                ("https://huggingface.co/runanywhere/LFM2-VL-450M-GGUF/resolve/main/LFM2-VL-450M-Q8_0.gguf",
-                 "LFM2-VL-450M-Q8_0.gguf"),
-                ("https://huggingface.co/runanywhere/LFM2-VL-450M-GGUF/resolve/main/mmproj-LFM2-VL-450M-Q8_0.gguf",
-                 "mmproj-LFM2-VL-450M-Q8_0.gguf")
-            ],
-            framework: .llamaCpp,
-            modality: .multimodal,
-            memoryRequirement: 600_000_000
         )
         // LFM2.5-VL, the current generation of the LFM2-VL row above. Q4_K_M
         // decoder paired with the Q8_0 mmproj — the same split the Qwen2-VL,
@@ -1537,6 +1306,59 @@ enum ModelCatalogBootstrap {
         )
         logger.info("Embedding models registered")
 
+        // --- Added from the verified model list ---------------------------------
+        // Language models, not embeddings, and llama.cpp rather than MLX. Both facts
+        // were wrong here: the block sat unguarded under the embedding section, so a
+        // target that does not link LlamaCPPRuntime still saw five rows it cannot
+        // execute, and the log line beneath them claimed they were embeddings.
+        #if canImport(LlamaCPPRuntime)
+        await registerLLM(
+            id: "lfm2.5-1.2b-thinking-q4_k_m",
+            name: "LFM2.5 1.2B Thinking Q4_K_M",
+            url: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Thinking-GGUF/resolve/main/LFM2.5-1.2B-Thinking-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 730_895_360 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 900_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "qwen3.5-2b-q4_k_m",
+            name: "Qwen3.5 2B Q4_K_M",
+            url: "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 1_280_835_840 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 1_550_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "qwen3.5-4b-q4_k_m",
+            name: "Qwen3.5 4B Q4_K_M",
+            url: "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 2_740_937_888 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 3_350_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "qwen3.5-9b-q4_k_m",
+            name: "Qwen3.5 9B Q4_K_M",
+            url: "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf",
+            framework: .llamaCpp,
+            // 5_680_522_464 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 6_950_000_000,
+            supportsThinking: true
+        )
+        await registerLLM(
+            id: "maple-preview-tq1_0",
+            name: "Maple Preview 20B-A1B TQ1_0 (1-bit)",
+            url: "https://huggingface.co/deepgrove/maple-preview-GGUF/resolve/main/maple-preview-TQ1_0-head-Q4_K.gguf",
+            framework: .llamaCpp,
+            // 4_984_016_416 B of weights plus KV cache and runtime overhead.
+            memoryRequirement: 6_100_000_000,
+            supportsThinking: true
+        )
+        #endif
+
         // QHexRT/HNPU bundles are Qualcomm-Android-only and are intentionally
         // not registered on Apple platforms.
 
@@ -1704,52 +1526,15 @@ enum ModelCatalogBootstrap {
         // --- LoRA adapters ------------------------------------------------------
         // Mirrors Android `ModelBootstrap.seedLora` / `ModelCatalog.loraAdapters`.
         #if canImport(LlamaCPPRuntime)
-        await registerLoraAdapters()
-        logger.info("LoRA adapters registered")
+        // LoRA adapters are not registered: the only adapter shipped is trained for
+        // qwen2.5-0.5b, which this catalog no longer carries. Re-add both together.
+        logger.info("LoRA adapters skipped: no adapter matches the current catalog")
         #endif
 
         // Diffusion (CoreML) backend is deferred scope for
         // Swift v1. Their model catalog entries are intentionally omitted.
 
         logger.info("All modules and models registered")
-    }
-
-    /// Seed the curated LoRA adapter catalog. `RALoraAdapterCatalogEntry` no
-    /// longer carries url/filename/size/description (idl/lora_options.proto:
-    /// "everything generic about the artifact ... lives on the ModelInfo
-    /// record for this adapter"), so the downloadable bytes are described by
-    /// a companion `RAModelInfo` artifact registered under the SDK's
-    /// `lora-adapter:{id}` convention. `registerArtifact` registers both the
-    /// catalog entry and that artifact record (no bytes fetched); safe to
-    /// re-run on every cold launch.
-    private static func registerLoraAdapters() async {
-        var adapter = RALoraAdapterCatalogEntry()
-        adapter.id = "abliterated-lora"
-        adapter.name = "Abliterated LoRA (F16)"
-        adapter.compatibleModels = ["qwen2.5-0.5b-instruct-q6_k"]
-        adapter.defaultScale = 1.0
-
-        let downloadURL = URL(
-            string: "https://huggingface.co/Void2377/qwen-lora-gguf/resolve/main/qwen2.5-0.5b-abliterated-lora-f16.gguf"
-        )
-        let artifact = RAModelInfo.make(
-            id: adapter.loraArtifactModelID,
-            name: adapter.name,
-            category: .language,
-            format: .gguf,
-            framework: .llamaCpp,
-            downloadURL: downloadURL,
-            downloadSizeBytes: 17_620_224,
-            description: "Removes refusal behavior — model answers directly without disclaimers"
-        )
-
-        do {
-            _ = try await RunAnywhere.lora.registerArtifact(adapter, artifact: artifact)
-        } catch {
-            logger.warning(
-                "Failed to register LoRA adapter: \(error.localizedDescription, privacy: .public)"
-            )
-        }
     }
 
     // MARK: - Registration helpers

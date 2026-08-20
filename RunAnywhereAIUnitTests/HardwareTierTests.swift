@@ -38,7 +38,7 @@ final class HardwareTierTests: XCTestCase {
 
     func testRecommendationDoesNotUseLocalByteBudget() {
         var small = RAModelInfo()
-        small.id = "mlx-lfm2-350m"
+        small.id = "mlx-lfm2.5-230m-4bit"
         small.name = "LFM2 350M"
         small.category = .language
         small.downloadSizeBytes = 9_000_000_000
@@ -48,16 +48,16 @@ final class HardwareTierTests: XCTestCase {
             tier: .unknown,
             appleFoundationAvailable: false,
             from: [small],
-            canRunByModelID: ["mlx-lfm2-350m": true]
+            canRunByModelID: ["mlx-lfm2.5-230m-4bit": true]
         )
         let refused = engine.recommend(
             tier: .unknown,
             appleFoundationAvailable: false,
             from: [small],
-            canRunByModelID: ["mlx-lfm2-350m": false]
+            canRunByModelID: ["mlx-lfm2.5-230m-4bit": false]
         )
 
-        XCTAssertEqual(allowed.recommendedLLMs.map(\.id), ["mlx-lfm2-350m"])
+        XCTAssertEqual(allowed.recommendedLLMs.map(\.id), ["mlx-lfm2.5-230m-4bit"])
         XCTAssertTrue(refused.recommendedLLMs.isEmpty)
     }
 }

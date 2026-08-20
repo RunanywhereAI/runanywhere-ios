@@ -43,6 +43,8 @@ enum ComposerAction {
     /// keyboard shortcut and no other way to hand a screenshot to the chat.
     case pasteAttachment
     case talk
+    /// The SDK demo hub. iOS only: the Mac reaches it from the sidebar.
+    case openAdvanced
 }
 
 // MARK: - Chat Messages View
@@ -94,8 +96,8 @@ struct ChatMessageListView: View {
         VStack(spacing: Space.xl) {
             // The shared figure, so the empty transcript is recognisably the same
             // object as every other empty state in the app. 96pt rather than the
-            // 132pt hero: this state also carries four starter prompts, and a
-            // full-size mark pushed them below the fold on the shortest phone.
+            // 132pt hero: the starter prompts sit directly under this in the
+            // composer, and a full-size mark pushed them off the shortest phone.
             EmptyStateMark(systemImage: "bubble.left.and.bubble.right", diameter: 96)
 
             VStack(spacing: Space.sm) {
@@ -108,8 +110,6 @@ struct ChatMessageListView: View {
                     .foregroundStyle(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
             }
-
-            starterPrompts
         }
         .padding(.horizontal, Space.screenMargin)
         .padding(.vertical, Space.xxl)
@@ -123,23 +123,6 @@ struct ChatMessageListView: View {
         case 5..<12: return "Good morning"
         case 12..<18: return "Good afternoon"
         default: return "Good evening"
-        }
-    }
-
-    /// `.adaptive` rather than two fixed columns: two columns in a 1200pt Mac
-    /// window stretched each chip to 500pt of mostly empty card, and two columns
-    /// on a phone in landscape clipped the subtitles.
-    private var starterPrompts: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 200, maximum: 320), spacing: Space.md)],
-            spacing: Space.md
-        ) {
-            ForEach(StarterPrompt.all) { prompt in
-                StarterPromptChip(prompt: prompt) {
-                    viewModel.currentInput = prompt.text
-                    isTextFieldFocused = true
-                }
-            }
         }
     }
 
@@ -203,110 +186,108 @@ struct ChatMessageListView: View {
 
 // MARK: - Starter Prompts
 
-/// The four things a consumer opens an on-device assistant to do.
+/// The things a consumer opens an on-device assistant to do, in the set that
+/// suits whatever the next turn can actually reach.
 ///
-/// `title` is the shared label — the same string Android's `generalSuggestions` and the web's
-/// `STARTER_PROMPTS` show — so the same chip is recognisable on all three. It used to be a
-/// single word ("Plan"), which made the four chips look like a different feature from the
-/// two-word set on the other two apps. `subtitle` is this platform's extra line and qualifies
-/// the label rather than repeating it. A value type
-/// rather than four hand-built call sites, so the grid stays one `ForEach` and
-/// the copy lives in one place.
+/// `title` is the shared label — the same string Android's `PromptSuggestions`
+/// and the web's `STARTER_PROMPTS` show — so the same chip is recognisable on
+/// all three. The three sets and their copy mirror Android's `generalSuggestions`
+/// / `toolSuggestions` / `personalizedSuggestions` exactly; only the general set
+/// goes without icons there, and it does here too.
 struct StarterPrompt: Identifiable {
     let id: String
-    let icon: String
+    let icon: String?
     let title: String
-    let subtitle: String
     let text: String
 
-    static let all: [StarterPrompt] = [
+    /// Which set to show. Mirrors Android's `PromptMode`: an adapter outranks
+    /// tools, because a personalized model is the more specific fact about what
+    /// the next turn will be.
+    static func set(toolsEnabled: Bool, loraActive: Bool) -> [StarterPrompt] {
+        if loraActive { return personalized }
+        return toolsEnabled ? tools : general
+    }
+
+    static let general: [StarterPrompt] = [
         StarterPrompt(
             id: "plan",
-            icon: "list.bullet.clipboard",
+            icon: nil,
             title: "Plan my day",
-            subtitle: "from messy notes",
             text: "Turn this messy list into a realistic plan with the top three priorities:"
         ),
         StarterPrompt(
             id: "rewrite",
-            icon: "pencil.line",
+            icon: nil,
             title: "Rewrite clearly",
-            subtitle: "warm and concise",
             text: "Rewrite this so it is clear, warm, and concise:"
         ),
         StarterPrompt(
             id: "compare",
-            icon: "arrow.left.arrow.right",
+            icon: nil,
             title: "Compare options",
-            subtitle: "weigh the tradeoffs",
             text: "Compare these options, explain the tradeoffs, and recommend one:"
         ),
         StarterPrompt(
             id: "summarize",
-            icon: "checklist",
+            icon: nil,
             title: "Summarize notes",
-            subtitle: "into next steps",
             text: "Summarize these notes into decisions, action items, and open questions:"
         )
     ]
-}
 
-private struct StarterPromptChip: View {
-    let prompt: StarterPrompt
-    let action: () -> Void
-    @State private var isHovering = false
+    static let tools: [StarterPrompt] = [
+        StarterPrompt(
+            id: "trip",
+            icon: "checklist",
+            title: "Trip plan",
+            text: "Help me make a practical packing list for a weekend city trip."
+        ),
+        StarterPrompt(
+            id: "time",
+            icon: "clock",
+            title: "Time check",
+            text: "What time is it in London, Tokyo, and San Francisco?"
+        ),
+        StarterPrompt(
+            id: "battery",
+            icon: "battery.100",
+            title: "Device status",
+            text: "Check my battery level and tell me if I should charge before leaving."
+        ),
+        StarterPrompt(
+            id: "math",
+            icon: "function",
+            title: "Quick math",
+            text: "Calculate 15% of 240, then show the shortcut."
+        )
+    ]
 
-    var body: some View {
-        Button {
-            Haptics.light()
-            action()
-        } label: {
-            HStack(spacing: Space.md) {
-                Image(systemName: prompt.icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(AppColors.primaryAccent)
-                    .frame(width: 20)
-
-                VStack(alignment: .leading, spacing: Space.hair) {
-                    Text(prompt.title)
-                        .appType(.cardTitle)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineLimit(1)
-                    Text(prompt.subtitle)
-                        .appType(.meta)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Space.cardPadding)
-            .cardSurface(radius: Radius.lg)
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                    .strokeBorder(
-                        isHovering ? AppColors.primaryAccent.opacity(0.45) : .clear,
-                        lineWidth: Stroke.regular
-                    )
-            )
-            // Hover lifts the card a hair off the page. On a Mac, a border that
-            // changes color is easy to miss on a grid of four; a card that rises
-            // is unmistakable, and it says "this is pressable" rather than just
-            // "the pointer is here". No-op on a phone, which has no hover.
-            .shadow(
-                color: AppColors.primaryAccent.opacity(isHovering ? 0.18 : 0),
-                radius: isHovering ? 12 : 0,
-                y: isHovering ? 4 : 0
-            )
-            .scaleEffect(isHovering ? 1.012 : 1)
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-        // `micro`, not `standard`: hover feedback slower than ~150ms lags the
-        // pointer, and on a grid the reader notices the lag before the lift.
-        .motionAware(Motion.microFade, value: isHovering)
-    }
+    static let personalized: [StarterPrompt] = [
+        StarterPrompt(
+            id: "reply",
+            icon: "person",
+            title: "Draft reply",
+            text: "Draft a concise, kind reply to this message:"
+        ),
+        StarterPrompt(
+            id: "tone",
+            icon: "slider.horizontal.3",
+            title: "Tighten tone",
+            text: "Make this message more direct while keeping it friendly:"
+        ),
+        StarterPrompt(
+            id: "memo",
+            icon: "doc.text",
+            title: "Decision memo",
+            text: "Turn this into a one-page decision memo with risks and next steps:"
+        ),
+        StarterPrompt(
+            id: "coach",
+            icon: "bolt",
+            title: "Coach me",
+            text: "Help me think through this situation and suggest my next move:"
+        )
+    ]
 }
 
 // MARK: - Message Insert Transition
@@ -322,342 +303,9 @@ extension AnyTransition {
     }
 }
 
-// MARK: - Chat Input Area
-
-struct ChatInputAreaView: View {
-    @Bindable var viewModel: LLMViewModel
-    @FocusState.Binding var isTextFieldFocused: Bool
-    @Binding var showingLoRAManagement: Bool
-    @ObservedObject var settingsViewModel: SettingsViewModel
-    @ObservedObject var toolSettingsViewModel: ToolSettingsViewModel
-    let imageAttachment: ChatImageAttachment?
-    let documentAttachment: ChatDocumentAttachment?
-    let isVisionModelReady: Bool
-    let areDocumentModelsReady: Bool
-    let canSendCurrentTurn: Bool
-    let onRemoveImageAttachment: () -> Void
-    let onRemoveDocumentAttachment: () -> Void
-    let onChooseVisionModel: () -> Void
-    let onChooseDocumentModels: () -> Void
-    let onComposerAction: (ComposerAction) -> Void
-    let onSend: () -> Void
-
-    private var hasText: Bool {
-        !viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    var body: some View {
-        VStack(spacing: Space.sm) {
-            if !activeBadges.isEmpty {
-                HStack(spacing: Space.sm) {
-                    ForEach(activeBadges) { badge in
-                        badgeView(badge)
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-
-            if let imageAttachment {
-                ImageAttachmentPill(
-                    attachment: imageAttachment,
-                    isVisionModelReady: isVisionModelReady,
-                    onRemove: onRemoveImageAttachment,
-                    onChooseVisionModel: onChooseVisionModel
-                )
-            }
-
-            if let documentAttachment {
-                DocumentAttachmentPill(
-                    attachment: documentAttachment,
-                    areModelsReady: areDocumentModelsReady,
-                    indexState: viewModel.documentIndexState,
-                    onRemove: onRemoveDocumentAttachment,
-                    onChooseModels: onChooseDocumentModels
-                )
-            }
-
-            composerRow
-        }
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.top, Space.md)
-        .padding(.bottom, Space.lg)
-        .measured(Measure.text)
-        .background(AppColors.backgroundGrouped)
-        .motionAware(Motion.snappy, value: composerLayoutSignature)
-    }
-
-    /// Everything that changes the composer's height, in one value — so growth
-    /// animates once instead of four modifiers each animating a different
-    /// subview at a different speed.
-    private var composerLayoutSignature: String {
-        let badges = activeBadges.map(\.id).joined(separator: ",")
-        return "\(badges)|\(imageAttachment == nil)|\(documentAttachment == nil)"
-    }
-
-    // MARK: - Composer Row
-
-    private var composerRow: some View {
-        HStack(alignment: .bottom, spacing: Space.sm) {
-            composerMenu
-
-            TextField(inputPlaceholder, text: $viewModel.currentInput, axis: .vertical)
-                .textFieldStyle(.plain)
-                .appType(.body)
-                .lineLimit(1...6)
-                .padding(.vertical, Space.sm)
-                .focused($isTextFieldFocused)
-                .onSubmit(onSend)
-                .submitLabel(.send)
-
-            trailingAction
-        }
-        .padding(.horizontal, Space.md)
-        .padding(.vertical, Space.xs)
-        .background(
-            RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-                .fill(AppColors.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-                .strokeBorder(
-                    isTextFieldFocused ? AppColors.primaryAccent.opacity(0.5) : AppColors.borderSubtle,
-                    lineWidth: isTextFieldFocused ? Stroke.regular : Hairline.width
-                )
-        )
-        .motionAware(Motion.microFade, value: isTextFieldFocused)
-    }
-
-    /// Attachments and per-turn switches in one native menu.
-    ///
-    /// The switches used to be two always-on circular buttons in the row, which
-    /// on a phone left the text field about 150pt wide and gave two rarely
-    /// changed settings the same visual weight as Send. Their *state* still
-    /// shows, as a badge above the composer — visible always, changed from a
-    /// menu, which is the right trade for something you set once.
-    private var composerMenu: some View {
-        Menu {
-            Section {
-                Button {
-                    onComposerAction(.attachFile)
-                } label: {
-                    Label("Attach Document", systemImage: "doc.badge.plus")
-                }
-
-                Button {
-                    onComposerAction(.attachPhoto)
-                } label: {
-                    Label("Attach Image", systemImage: "photo")
-                }
-
-                // Not iOS-only. VLMCameraView ships real macOS support — an
-                // NSViewRepresentable preview and a Privacy & Security deep link —
-                // and ChatInterfaceView already presents it under #if os(macOS),
-                // but this was the only action that set showingVisionWorkbench.
-                // Behind an iOS guard that made a finished feature unreachable on
-                // a Mac that has working cameras.
-                Button {
-                    onComposerAction(.takePhoto)
-                } label: {
-                    // `eye` — looking through a live feed — and not `livephoto`, which
-                    // VLMCameraView already uses for the auto-streaming toggle. It is also
-                    // what `RAModelCategory.consumerCapabilityIcon` returns for vision, and
-                    // the glyph Android (`RACIcons.Outline.Eye`) and the web app draw here.
-                    Label("Live Camera", systemImage: "eye")
-                }
-
-                // Disabled rather than hidden when the clipboard is empty: a row
-                // that appears and disappears is a control nobody learns, and it
-                // is the only signal on a phone that pasting a screenshot is
-                // even possible.
-                Button {
-                    onComposerAction(.pasteAttachment)
-                } label: {
-                    Label("Paste", systemImage: "doc.on.clipboard")
-                }
-                .disabled(!ChatAttachmentLoader.pasteboardHasAttachment)
-            }
-
-            Section {
-                Toggle(isOn: $settingsViewModel.thinkingModeEnabled) {
-                    Label("Show Reasoning", systemImage: "brain")
-                }
-                .disabled(!viewModel.loadedModelSupportsThinking)
-
-                Toggle(isOn: $toolSettingsViewModel.toolCallingEnabled) {
-                    // `globe` — the network — rather than `safari`, one browser's mark
-                    // standing in for the web. Matches the web app's `globe` and Android's
-                    // new `RACIcons.Outline.Globe`.
-                    Label("Web Tools", systemImage: "globe")
-                }
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(AppColors.textSecondary)
-                .frame(width: 32, height: 32)
-                .contentShape(Circle())
-        }
-        // `.button` + `.plain` rather than `.borderlessButton`: the latter is
-        // deprecated on iOS in favor of exactly this pair, and the default menu
-        // style paints AppKit's bordered chrome around the glyph on the Mac.
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .accessibilityLabel("Attach or change options")
-    }
-
-    /// One slot, three states — stop while generating, send when there is
-    /// something to send, otherwise voice.
-    ///
-    /// A single `Button` whose symbol is computed, not three sibling buttons: the
-    /// slot keeps its identity, so `.contentTransition(.symbolEffect(.replace))`
-    /// actually fires and the row never reflows when send becomes stop
-    /// mid-sentence. A permanently dimmed Send is also a dead end; offering
-    /// voice in its place makes the empty composer actionable.
-    private var trailingAction: some View {
-        Button {
-            Haptics.light()
-            switch trailingRole {
-            case .stop: viewModel.stopGeneration()
-            case .send: onSend()
-            case .talk: onComposerAction(.talk)
-            }
-        } label: {
-            Image(systemName: trailingRole.icon)
-                .font(.system(size: 28))
-                .foregroundStyle(trailingTint)
-                .frame(width: 32, height: 32)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .disabled(trailingRole == .send && !canSendCurrentTurn)
-        .accessibilityLabel(trailingRole.label)
-        .contentTransition(.symbolEffect(.replace))
-        .motionAware(Motion.snappy, value: trailingRole)
-    }
-
-    private enum TrailingRole: Equatable {
-        case stop
-        case send
-        case talk
-
-        var icon: String {
-            switch self {
-            case .stop: return "stop.circle.fill"
-            case .send: return "arrow.up.circle.fill"
-            case .talk: return "mic.circle.fill"
-            }
-        }
-
-        var label: String {
-            switch self {
-            case .stop: return "Stop generating"
-            case .send: return "Send message"
-            case .talk: return "Talk to the assistant"
-            }
-        }
-    }
-
-    private var trailingRole: TrailingRole {
-        if viewModel.isGenerating { return .stop }
-        return hasText ? .send : .talk
-    }
-
-    private var trailingTint: Color {
-        trailingRole == .send && !canSendCurrentTurn
-            ? AppColors.statusGray
-            : AppColors.primaryAccent
-    }
-
-    private var inputPlaceholder: String {
-        if imageAttachment != nil { return "Ask about this image…" }
-        if documentAttachment != nil { return "Ask about this document…" }
-        return "Message"
-    }
-
-    // MARK: - Badges
-
-    /// A live capability that changes what the next turn will do. Not a setting —
-    /// state, surfaced where the turn is composed.
-    private struct ComposerBadge: Identifiable {
-        let id: String
-        let icon: String
-        let title: String
-        let tint: Color
-        let action: (() -> Void)?
-    }
-
-    private var activeBadges: [ComposerBadge] {
-        var badges: [ComposerBadge] = []
-
-        if settingsViewModel.thinkingModeEnabled && viewModel.loadedModelSupportsThinking {
-            badges.append(
-                ComposerBadge(
-                    id: "thinking",
-                    icon: "brain",
-                    title: "Reasoning",
-                    tint: AppColors.primaryPurple,
-                    action: nil
-                )
-            )
-        }
-
-        if viewModel.useToolCalling && !viewModel.isUsingConnect {
-            badges.append(
-                ComposerBadge(
-                    id: "tools",
-                    icon: "globe",
-                    title: toolSettingsViewModel.registeredTools.isEmpty ? "Preparing tools…" : "Web tools",
-                    tint: AppColors.primaryAccent,
-                    action: nil
-                )
-            )
-        }
-
-        if !viewModel.isUsingConnect && !viewModel.loraAdapters.isEmpty {
-            badges.append(
-                ComposerBadge(
-                    id: "lora",
-                    icon: "sparkles",
-                    title: "LoRA ×\(viewModel.loraAdapters.count)",
-                    tint: AppColors.primaryPurple
-                ) {
-                    Task { await viewModel.refreshAvailableAdapters() }
-                    showingLoRAManagement = true
-                }
-            )
-        }
-
-        return badges
-    }
-
-    @ViewBuilder
-    private func badgeView(_ badge: ComposerBadge) -> some View {
-        let content = HStack(spacing: Space.xs) {
-            Image(systemName: badge.icon)
-                .font(.system(size: 10, weight: .semibold))
-            Text(badge.title)
-                .appType(.chip)
-        }
-        .foregroundStyle(badge.tint)
-        .padding(.horizontal, Space.sm)
-        .padding(.vertical, Space.xs)
-        .background(Capsule().fill(badge.tint.opacity(0.12)))
-
-        if let action = badge.action {
-            Button(action: action) { content }
-                .buttonStyle(.plain)
-        } else {
-            content
-                .accessibilityLabel("\(badge.title) is on")
-        }
-    }
-}
-
 // MARK: - Attachment Pills
 
-private struct ImageAttachmentPill: View {
+struct ImageAttachmentPill: View {
     let attachment: ChatImageAttachment
     let isVisionModelReady: Bool
     let onRemove: () -> Void
@@ -701,7 +349,7 @@ private struct ImageAttachmentPill: View {
     }
 }
 
-private struct DocumentAttachmentPill: View {
+struct DocumentAttachmentPill: View {
     let attachment: ChatDocumentAttachment
     let areModelsReady: Bool
     let indexState: ChatDocumentIndexState

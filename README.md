@@ -26,6 +26,10 @@ Ask it questions, talk to it, or show it what your camera sees. The models run o
 itself, so your prompts and photos never leave it, and everything still works in airplane
 mode.
 
+The one exception is Connect, described below, where you deliberately host a model on your
+own Mac and use it from your iPhone. In that mode the request travels to that Mac. It still
+reaches no third party.
+
 ## Get it
 
 | Platform | Where |
@@ -115,7 +119,7 @@ One dependency supplies everything. The app links five products from
 [`runanywhere-swift`](https://github.com/RunanywhereAI/runanywhere-swift), the Swift-only
 SwiftPM distribution generated from the SDK monorepo, currently pinned at `0.20.24`.
 
-```
+```text
               RunAnywhereAI
         SwiftUI, MVVM + Observation
                     │

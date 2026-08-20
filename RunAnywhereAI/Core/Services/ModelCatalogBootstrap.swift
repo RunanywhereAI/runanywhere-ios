@@ -1304,7 +1304,14 @@ enum ModelCatalogBootstrap {
             modality: .embedding,
             memoryRequirement: 350_000_000
         )
+        logger.info("Embedding models registered")
+
         // --- Added from the verified model list ---------------------------------
+        // Language models, not embeddings, and llama.cpp rather than MLX. Both facts
+        // were wrong here: the block sat unguarded under the embedding section, so a
+        // target that does not link LlamaCPPRuntime still saw five rows it cannot
+        // execute, and the log line beneath them claimed they were embeddings.
+        #if canImport(LlamaCPPRuntime)
         await registerLLM(
             id: "lfm2.5-1.2b-thinking-q4_k_m",
             name: "LFM2.5 1.2B Thinking Q4_K_M",
@@ -1350,8 +1357,7 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 6_100_000_000,
             supportsThinking: true
         )
-
-        logger.info("Embedding models registered")
+        #endif
 
         // QHexRT/HNPU bundles are Qualcomm-Android-only and are intentionally
         // not registered on Apple platforms.
@@ -1522,7 +1528,7 @@ enum ModelCatalogBootstrap {
         #if canImport(LlamaCPPRuntime)
         // LoRA adapters are not registered: the only adapter shipped is trained for
         // qwen2.5-0.5b, which this catalog no longer carries. Re-add both together.
-        logger.info("LoRA adapters registered")
+        logger.info("LoRA adapters skipped: no adapter matches the current catalog")
         #endif
 
         // Diffusion (CoreML) backend is deferred scope for

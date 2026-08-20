@@ -155,8 +155,14 @@ struct ModelRecommendationEngine {
                 from: byID,
                 canRunByModelID: canRunByModelID
             ),
+            // Sorted, not `first`: Dictionary order is undefined, so a catalog
+            // carrying a second voice-activity row would hand back a different
+            // VAD between launches for the same catalog. Every other fallback in
+            // this file orders by size, and this one now matches.
             vad: byID[Self.vadModelID]
-                ?? byID.values.first { $0.category == .voiceActivityDetection }
+                ?? byID.values
+                    .filter { $0.category == .voiceActivityDetection }
+                    .min { $0.consumerSizeBytes < $1.consumerSizeBytes }
         )
     }
 

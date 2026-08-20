@@ -111,4 +111,13 @@ weight.bin
 # Local release credentials. This file can be bundled by local release builds,
 # but must never be committed.
 RunAnywhereAI/Resources/RunAnywhereLocalSecrets.plist
+
+# JetBrains project files.
 .idea/
+
+# Claude / cross-agent tooling. `.claude/skills/` (if present) is the canonical, human-edited
+# skill tree; `.agents/skills/` is a generated mirror for non-Claude tooling (e.g. Codex), kept
+# local/ignored for now pending a decision on what is safe to publish from this public repo.
+# See scripts/sync-skills.sh.
+.claude/*
+.agents/*

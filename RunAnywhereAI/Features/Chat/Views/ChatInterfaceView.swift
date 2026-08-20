@@ -545,7 +545,7 @@ extension ChatInterfaceView {
             // already halved the viewport and the chips would take a third of
             // what is left.
             VStack(spacing: 0) {
-                if viewModel.messages.isEmpty && !isTextFieldFocused {
+                if viewModel.messages.isEmpty && !keyboardIsCoveringContent {
                     ChatPromptSuggestionsRow(prompts: suggestionSet) { prompt in
                         viewModel.currentInput = prompt.text
                         isTextFieldFocused = true
@@ -560,6 +560,19 @@ extension ChatInterfaceView {
         }
         .motionAware(Motion.standardFade, value: viewModel.messages.isEmpty)
         .motionAware(Motion.standardFade, value: isTextFieldFocused)
+    }
+
+    /// Whether a software keyboard is currently taking half the viewport.
+    ///
+    /// Only ever true on iOS. The Mac gives the composer focus the moment a
+    /// window opens (`.defaultFocus`, plus `focusComposer()` on conversation
+    /// change), so gating the chips on focus there hid them permanently.
+    private var keyboardIsCoveringContent: Bool {
+        #if os(iOS)
+        isTextFieldFocused
+        #else
+        false
+        #endif
     }
 
     private var suggestionSet: [StarterPrompt] {
@@ -794,6 +807,10 @@ extension ChatInterfaceView {
         case .openAdvanced:
             #if os(iOS)
             showingAdvancedHub = true
+            #else
+            // The Mac reaches Advanced from its sidebar (⌘3), so the menu row is
+            // compiled out there and this case has nothing to do.
+            break
             #endif
         }
     }
@@ -809,6 +826,11 @@ extension ChatInterfaceView {
     /// document at once" representable, and the composer cannot send that.
     @MainActor
     private func stage(_ attachment: ChatPendingAttachment) {
+        // Reaching here means a file was accepted, so any previous refusal is
+        // now stale. Without this the rejection strip sat above the pill of the
+        // file that had just worked, contradicting it.
+        attachmentRejection = nil
+
         switch attachment {
         case .image(let image):
             pendingImageAttachment = image

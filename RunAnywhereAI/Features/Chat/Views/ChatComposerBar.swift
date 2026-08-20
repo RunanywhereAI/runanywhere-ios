@@ -291,9 +291,16 @@ struct ChatComposerBar: View {
 
             Spacer(minLength: 0)
 
+            // `isOn` follows the request, not the verdict. Painting the fill
+            // from `toolsEnabled` meant a tap on a model that cannot carry tools
+            // changed the setting and moved nothing on screen. Disabling the
+            // control instead would trap the opposite way: tools left on, then a
+            // hosted session connects, and there is no way to turn them off
+            // again. The request is what the tap owns; whether it can run is the
+            // status pill's job to say.
             ComposerToggle(
                 icon: "globe",
-                isOn: viewModel.toolsEnabled,
+                isOn: viewModel.useToolCalling,
                 isEnabled: true,
                 label: toolsToggleLabel
             ) {

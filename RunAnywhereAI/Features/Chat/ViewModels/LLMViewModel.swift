@@ -305,7 +305,7 @@ final class LLMViewModel {
     var canSend: Bool {
         !currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !isBusy
-        && isModelLoaded
+        && hasUsableModel
     }
 
     /// Inference or its cancellation owns the chat.
@@ -848,8 +848,12 @@ final class LLMViewModel {
 
     // MARK: - Private Methods - Message Generation
 
+    /// `hasUsableModel`, not `isModelLoaded`: a hosted Connect session answers
+    /// without a local model resident, and `handleModelUnloaded` can clear
+    /// `isModelLoaded` while the session is still live. Reading the narrower
+    /// flag here refused a turn the host was ready to serve.
     private func ensureModelIsLoaded() async throws {
-        if !isModelLoaded {
+        if !hasUsableModel {
             throw LLMError.noModelLoaded
         }
     }

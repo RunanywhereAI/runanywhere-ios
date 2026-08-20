@@ -52,7 +52,7 @@ final class ModelOrgCatalogTests: XCTestCase {
     func testGroupsOrderFollowsOrgDeclaration() {
         let models = [
             makeModel(id: "all-minilm-l6-v2", name: "MiniLM"),
-            makeModel(id: "qwen3-4b", name: "Qwen3 4B"),
+            makeModel(id: "qwen3.5-4b", name: "Qwen3.5 4B"),
             makeModel(id: "nemotron-mini-4b", name: "Nemotron Mini 4B"),
         ]
 

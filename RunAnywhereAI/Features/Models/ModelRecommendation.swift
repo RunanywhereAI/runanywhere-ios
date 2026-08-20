@@ -80,9 +80,10 @@ struct ModelRecommendationEngine {
 
         let recommendedLLMs = pickModels(
             ids: prefs.llmIDs,
+            category: .language,
             from: byID,
             canRunByModelID: canRunByModelID,
-            limit: tier == .highEnd ? 5 : 4
+            limit: 5
         )
 
         let appleFoundation = appleFoundationAvailable
@@ -94,10 +95,31 @@ struct ModelRecommendationEngine {
         return RecommendedSelection(
             defaultChatModel: defaultChat,
             recommendedLLMs: recommendedLLMs,
-            recommendedASR: pickFirst(ids: prefs.asrIDs, from: byID, canRunByModelID: canRunByModelID),
-            recommendedTTS: pickFirst(ids: prefs.ttsIDs, from: byID, canRunByModelID: canRunByModelID),
-            recommendedVLM: pickFirst(ids: prefs.vlmIDs, from: byID, canRunByModelID: canRunByModelID),
-            recommendedEmbedding: pickFirst(ids: prefs.embeddingIDs, from: byID, canRunByModelID: canRunByModelID)
+            recommendedASR: pickFirst(
+                ids: prefs.asrIDs,
+                category: .speechRecognition,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            ),
+            recommendedTTS: pickFirst(
+                ids: prefs.ttsIDs,
+                category: .speechSynthesis,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            ),
+            recommendedVLM: pickFirst(
+                ids: prefs.vlmIDs,
+                category: .multimodal,
+                secondaryCategory: .vision,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            ),
+            recommendedEmbedding: pickFirst(
+                ids: prefs.embeddingIDs,
+                category: .embedding,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            )
         )
     }
 
@@ -117,13 +139,24 @@ struct ModelRecommendationEngine {
             ? models.first { $0.isAppleFoundationModel && $0.category == .language }
             : nil
         let llm = appleFoundation
-            ?? pickFirst(ids: prefs.llmIDs, from: byID, canRunByModelID: canRunByModelID)
+            ?? pickFirst(ids: prefs.llmIDs, category: .language, from: byID, canRunByModelID: canRunByModelID)
 
         return VoicePipeline(
-            stt: pickFirst(ids: prefs.asrIDs, from: byID, canRunByModelID: canRunByModelID),
+            stt: pickFirst(
+                ids: prefs.asrIDs,
+                category: .speechRecognition,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            ),
             llm: llm,
-            tts: pickFirst(ids: prefs.ttsIDs, from: byID, canRunByModelID: canRunByModelID),
+            tts: pickFirst(
+                ids: prefs.ttsIDs,
+                category: .speechSynthesis,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            ),
             vad: byID[Self.vadModelID]
+                ?? byID.values.first { $0.category == .voiceActivityDetection }
         )
     }
 
@@ -133,26 +166,62 @@ struct ModelRecommendationEngine {
     // MARK: - Selection helpers
 
     /// Keep the ordered ids that exist in the catalog and pass can_run (when
-    /// known), up to `limit`. Preserves the curated order (light → smart).
+    /// known), up to `limit`, then back-fill from the category if the curated
+    /// list came up short.
+    ///
+    /// The back-fill is not a nicety. Curated ids are the app's opinion about
+    /// which models are good; the catalog is edited on its own schedule, in its
+    /// own PR, usually by someone not reading this file. Without a floor, a
+    /// catalog pass that renames or drops a family silently turns the Models
+    /// screen into a screen that recommends nothing — which is exactly what the
+    /// 0.20.24 catalog rebuild did here, taking all five reachable ids with it.
+    /// Mirrors Android `ModelRecommendation.pickLLMs`.
     private func pickModels(
         ids: [String],
+        category: RAModelCategory,
         from byID: [String: RAModelInfo],
         canRunByModelID: [String: Bool],
         limit: Int
     ) -> [RAModelInfo] {
         var picked: [RAModelInfo] = []
+        var pickedIDs = Set<String>()
+
         for id in ids {
             guard picked.count < limit else { break }
             if let model = byID[id], isRunnable(model, canRunByModelID: canRunByModelID) {
                 picked.append(model)
+                pickedIDs.insert(model.id)
             }
+        }
+
+        guard picked.count < minimumRecommendations else { return picked }
+
+        // Smallest first, so a back-filled list still opens with something the
+        // device can plausibly run rather than with the biggest file present.
+        let backfill = byID.values
+            .filter { $0.category == category }
+            .filter { !pickedIDs.contains($0.id) }
+            .filter { isRunnable($0, canRunByModelID: canRunByModelID) }
+            .sorted { $0.consumerSizeBytes < $1.consumerSizeBytes }
+
+        for model in backfill where picked.count < limit {
+            picked.append(model)
+            pickedIDs.insert(model.id)
         }
         return picked
     }
 
-    /// First catalog model from the ordered ids that passes can_run when known.
+    /// Below this, the curated list is treated as having failed and the category
+    /// back-fill runs. Matches Android's threshold.
+    private let minimumRecommendations = 3
+
+    /// First catalog model from the ordered ids that passes can_run when known,
+    /// falling back to the smallest model in the category. Same reasoning as
+    /// `pickModels`: a stale id must degrade to a worse answer, never to none.
     private func pickFirst(
         ids: [String],
+        category: RAModelCategory,
+        secondaryCategory: RAModelCategory? = nil,
         from byID: [String: RAModelInfo],
         canRunByModelID: [String: Bool]
     ) -> RAModelInfo? {
@@ -161,7 +230,10 @@ struct ModelRecommendationEngine {
                 return model
             }
         }
-        return nil
+        return byID.values
+            .filter { $0.category == category || $0.category == secondaryCategory }
+            .filter { isRunnable($0, canRunByModelID: canRunByModelID) }
+            .min { $0.consumerSizeBytes < $1.consumerSizeBytes }
     }
 
     /// Prefer commons `can_run`. When the SDK has not returned a verdict for
@@ -173,19 +245,43 @@ struct ModelRecommendationEngine {
 
     // MARK: - Curated per-tier preferences (real registered ids)
 
+    /// `HardwareTierResolver` returns `.unknown` on every device today, so a
+    /// straight tier switch meant one list was the only list anything ever read.
+    /// Until commons publishes a typed tier, the platform is the one honest
+    /// signal available: a Mac is not a phone. That is not a RAM heuristic and
+    /// not a memory budget, so it does not cross the line the rest of this file
+    /// holds. A real tier, when it arrives, outranks it.
     private func preferences(for tier: HardwareTier) -> TierPreferences {
         switch tier {
-        case .unknown, .midRange: return .midRange
         case .lowEnd: return .lowEnd
+        case .midRange: return .midRange
         case .highEnd: return .highEnd
+        case .unknown:
+            #if os(macOS)
+            return .highEnd
+            #else
+            return .midRange
+            #endif
         }
     }
 }
 
-// MARK: - Curated id lists (real registered ids from ModelCatalogBootstrap)
+// MARK: - Curated id lists
+
+// Ids from the 0.20.24 catalog rebuild, ordered by how good the model is rather
+// than by how small it is. Size still decides the back-fill, because a fallback
+// should be cheap; these lists are where the app states a preference.
+//
+// Per-app curated lists are a deliberate, known-bad tradeoff: six apps hold six
+// copies of this judgement, which is the shape of the breakage the back-fill
+// above now absorbs. Promoting the ranking onto the catalog row is the escape
+// hatch if it bites twice.
+//
+// MLX ids appear alongside their GGUF twins. MLX registration fails on the arm64
+// simulator, so those rows are simply absent there and the next id wins.
 
 private extension ModelRecommendationEngine.TierPreferences {
-    /// Smallest quantized / ONNX variants only.
+    /// Smallest current-generation models. Nothing above ~2B.
     static let lowEnd = Self(
         llmIDs: [
             "mlx-lfm2.5-230m-4bit",
@@ -194,11 +290,9 @@ private extension ModelRecommendationEngine.TierPreferences {
             "qwen3.5-0.8b-q4_k_m"
         ],
         asrIDs: [
-            "sherpa-onnx-whisper-tiny.en",
-            "mlx-qwen3-asr-0.6b-8bit"
+            "sherpa-onnx-whisper-tiny.en"
         ],
         ttsIDs: [
-            "mlx-soprano-1.1-80m-5bit",
             "vits-piper-en_US-lessac-medium"
         ],
         vlmIDs: [
@@ -206,12 +300,12 @@ private extension ModelRecommendationEngine.TierPreferences {
             "lfm2.5-vl-3b-q4_k_m"
         ],
         embeddingIDs: [
-            "all-minilm-l6-v2",
-            "mlx-qwen3-embedding-0.6b-4bit-dwq"
+            "all-minilm-l6-v2"
         ]
     )
 
-    /// A spread: tiny/fast, balanced, tool-calling, thinking.
+    /// The phone and iPad default: a spread from instant to genuinely capable,
+    /// none of it large enough to be a bad idea on battery.
     static let midRange = Self(
         llmIDs: [
             "mlx-lfm2.5-230m-4bit",
@@ -221,37 +315,29 @@ private extension ModelRecommendationEngine.TierPreferences {
             "qwen3.5-2b-q4_k_m"
         ],
         asrIDs: [
-            "mlx-qwen3-asr-0.6b-8bit",
             "sherpa-onnx-whisper-tiny.en"
         ],
         ttsIDs: [
-            "mlx-soprano-1.1-80m-5bit",
             "vits-piper-en_US-lessac-medium"
         ],
-        // No MLX Qwen2-VL. Measured on this Mac (M4 Max, MLX 4-bit): every vision
-        // turn decoded its opening token and then repeated only that token —
-        // 23 × "The" for "what colour is the circle?", the same for a photograph
-        // and for a synthetic card, on a first turn and on later ones. The prompt
-        // was sized correctly (418 tokens, image tokens included) and the MLX
-        // *text* path answered normally with identical sampler settings, so this
-        // is the model on this runtime, not our image or generation plumbing.
-        // The web SDK already forces Qwen2-VL off WebGPU for an f16 M-RoPE
+        // No MLX Qwen2-VL, and no Qwen-family VLM as the default. Measured on an
+        // M4 Max (MLX 4-bit): every vision turn decoded its opening token and
+        // then repeated only that token, on photographs and synthetic cards
+        // alike, while the MLX text path answered normally with the same sampler
+        // settings. The web SDK forces Qwen2-VL off WebGPU for an f16 M-RoPE
         // overflow; this is the same family failing the same way on Metal.
-        // LFM2-VL through llama.cpp answers the same camera correctly (128 tokens
-        // at 32 tok/s), so it leads instead. Qwen2-VL stays in the catalog —
-        // pickable, just never the recommendation.
         vlmIDs: [
             "lfm2.5-vl-3b-q4_k_m",
             "smolvlm2-500m-video-instruct-q8_0",
             "smolvlm2-256m-video-instruct-q8_0"
         ],
         embeddingIDs: [
-            "mlx-qwen3-embedding-0.6b-4bit-dwq",
             "all-minilm-l6-v2"
         ]
     )
 
-    /// Full spread including a larger "genius" model.
+    /// Mac. Commons still gates each id on real device RAM through `can_run`,
+    /// so naming a 27B here is a preference, not a promise.
     static let highEnd = Self(
         llmIDs: [
             "mlx-lfm2.5-1.2b-instruct-4bit",
@@ -261,23 +347,16 @@ private extension ModelRecommendationEngine.TierPreferences {
             "mlx-qwen3.5-4b-4bit"
         ],
         asrIDs: [
-            "mlx-qwen3-asr-0.6b-8bit",
             "sherpa-onnx-whisper-tiny.en"
         ],
         ttsIDs: [
-            "mlx-soprano-1.1-80m-5bit",
             "vits-piper-en_US-lessac-medium"
         ],
-        // Same reason as `midRange`: MLX Qwen2-VL answers with one repeated
-        // token. Qwen2.5-VL is a different generation on a different runtime
-        // (llama.cpp) and leads here; the MLX Qwen3-VL stays as the second
-        // choice rather than the default no one chose.
         vlmIDs: [
             "lfm2.5-vl-3b-q4_k_m",
             "mlx-qwen3-vl-4b-instruct-4bit"
         ],
         embeddingIDs: [
-            "mlx-qwen3-embedding-0.6b-4bit-dwq",
             "all-minilm-l6-v2"
         ]
     )

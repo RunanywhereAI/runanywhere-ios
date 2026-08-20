@@ -17,8 +17,10 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
     case alibaba
     case google
     case microsoft
+    case ibm
     case deepseek
     case liquid
+    case deepgrove
     case mistral
     case prism
     case openAI
@@ -35,8 +37,10 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
         case .alibaba: return "Alibaba"
         case .google: return "Google"
         case .microsoft: return "Microsoft"
+        case .ibm: return "IBM"
         case .deepseek: return "DeepSeek"
         case .liquid: return "Liquid AI"
+        case .deepgrove: return "Deepgrove"
         case .mistral: return "Mistral AI"
         case .prism: return "Prism"
         case .openAI: return "OpenAI"
@@ -53,8 +57,10 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
         case .alibaba: return "q.circle.fill"
         case .google: return "g.circle.fill"
         case .microsoft: return "m.square.fill"
+        case .ibm: return "cpu"
         case .deepseek: return "brain.head.profile"
         case .liquid: return "drop.fill"
+        case .deepgrove: return "leaf.fill"
         case .mistral: return "wind"
         case .prism: return "triangle.fill"
         case .openAI: return "waveform"
@@ -103,9 +109,15 @@ enum ModelOrgCatalog {
         ]),
         OrgRule(org: .deepseek, patterns: ["deepseek"]),
         OrgRule(org: .prism, patterns: ["bonsai"]),
-        OrgRule(org: .microsoft, patterns: ["phi"]),
+        OrgRule(org: .deepgrove, patterns: ["maple"]),
+        OrgRule(org: .ibm, patterns: ["granite"]),
+        // `fara` above Microsoft's `phi` only so the two cannot fight if Fara is
+        // ever renamed. Fara1.5 ships mirrored under our own HF org, so the
+        // catalog row does not name a publisher; this files it by its own name
+        // rather than guessing one into a UI label.
+        OrgRule(org: .microsoft, patterns: ["phi", "fara"]),
         OrgRule(org: .google, patterns: ["gemma", "embeddinggemma", "siglip"]),
-        OrgRule(org: .meta, patterns: ["llama"]),
+        OrgRule(org: .meta, patterns: ["llama", "muse-glimmer", "muse_glimmer"]),
         OrgRule(org: .alibaba, patterns: ["qwen"]),
         OrgRule(org: .liquid, patterns: ["lfm2"]),
         OrgRule(org: .mistral, patterns: ["mistral"]),

@@ -40,15 +40,15 @@ To install on a Mac, open the `.dmg` and drag RunAnywhereAI to Applications.
 
 ## What it looks like
 
-Captured on an iPhone 17 Pro simulator running LiquidAI LFM2 1.2B Tool, quantised Q4_K_M,
-through the llama.cpp backend.
+Captured on an iPhone 17 Pro simulator, running a small GGUF chat model through the
+llama.cpp backend.
 
 | | |
 |---|---|
 | ![Chat with a model loaded](docs/screenshots/03-ready.png) | ![A streamed answer](docs/screenshots/04-chat.png) |
 | Model loaded and ready. The header shows which one is active and that it is local. | An answer, with tokens per second and wall time under it. Nothing left the device. |
 | ![Choosing a model](docs/screenshots/02-model-picker.png) | ![The Advanced hub](docs/screenshots/06-more.png) |
-| The picker recommends a model for the device, and can pull any GGUF from Hugging Face. | Everything beyond chat lives here, grouped by what it does. |
+| Models are grouped by who published them. The picker recommends one for the device, and can pull any GGUF from Hugging Face. | Everything beyond chat lives here, grouped by what it does. |
 | ![Segmentation](docs/screenshots/19-segmentation.png) | ![Settings](docs/screenshots/14-settings.png) |
 | Segmentation outlines objects in a photo and labels them. | Settings covers the system prompt, sampling, tool calling, and local storage. |
 
@@ -70,6 +70,16 @@ The image files are in [`docs/screenshots/`](docs/screenshots).
 
 Chat is the app. Everything else sits behind an Advanced hub, reached from the chat on
 iPhone and from the sidebar on Mac.
+
+## Models
+
+The picker groups models by publisher, so you pick a name you recognise and then a size. It
+carries current-generation open models across chat, vision, speech, and embedding, from a
+230M model that answers instantly to larger ones a Mac can hold. Sizes shown are measured,
+not estimated, and the app checks each one against your device before recommending it.
+
+You can also paste any GGUF repo from Hugging Face and it will be fetched and registered
+alongside the rest.
 
 ## Build it yourself
 

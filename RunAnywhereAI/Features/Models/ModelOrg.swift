@@ -24,6 +24,7 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
     case mistral
     case prism
     case openAI
+    case zhipu
     case huggingFace
     case apple
     case openSource
@@ -44,6 +45,7 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
         case .mistral: return "Mistral AI"
         case .prism: return "Prism"
         case .openAI: return "OpenAI"
+        case .zhipu: return "Zhipu AI"
         case .huggingFace: return "Hugging Face"
         case .apple: return "Apple"
         case .openSource: return "Open source"
@@ -64,6 +66,7 @@ enum ModelOrg: String, CaseIterable, Identifiable, Comparable {
         case .mistral: return "wind"
         case .prism: return "triangle.fill"
         case .openAI: return "waveform"
+        case .zhipu: return "g.circle"
         case .huggingFace: return "face.smiling.fill"
         case .apple: return "apple.logo"
         case .openSource: return "shippingbox.fill"
@@ -120,12 +123,13 @@ enum ModelOrgCatalog {
         OrgRule(org: .meta, patterns: ["llama", "muse-glimmer", "muse_glimmer"]),
         OrgRule(org: .alibaba, patterns: ["qwen"]),
         OrgRule(org: .liquid, patterns: ["lfm2"]),
-        OrgRule(org: .mistral, patterns: ["mistral"]),
+        OrgRule(org: .mistral, patterns: ["mistral", "ministral"]),
         OrgRule(org: .huggingFace, patterns: ["smollm", "smolvlm"]),
         OrgRule(org: .openAI, patterns: ["whisper"]),
+        OrgRule(org: .zhipu, patterns: ["glm"]),
         OrgRule(org: .openSource, patterns: [
             "internvl", "lama_dilated", "moonshine", "melo", "kokoro",
-            "kitten", "piper", "silero", "minilm", "soprano", "pocket-tts", "glm-asr",
+            "kitten", "piper", "silero", "minilm", "soprano", "pocket-tts",
             "segformer",
         ]),
     ]

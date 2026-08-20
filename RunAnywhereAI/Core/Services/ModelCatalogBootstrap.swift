@@ -156,7 +156,7 @@ enum ModelCatalogBootstrap {
         await registerLLM(
             id: "qwen3.8-27b-q4_k_m",
             name: "Qwen3.8 27B Q4_K_M",
-            url: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf",
+            url: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-UD-Q4_K_M.gguf",
             framework: .llamaCpp,
             // 17,106,775,008 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 18_800_000_000,
@@ -813,8 +813,9 @@ enum ModelCatalogBootstrap {
             id: "gemma-4-e4b-it-q4_k_m",
             name: "Gemma 4 E4B IT Q4_K_M (Experimental)",
             files: [
-                ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
-                 "gemma-4-E4B-it-Q4_K_M.gguf"),
+                // ggml-org publishes no Q4_K_M for this repo — Q4_0 is its only 4-bit build.
+                ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_0.gguf",
+                 "gemma-4-E4B-it-Q4_0.gguf"),
                 ("https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/mmproj-gemma-4-E4B-it-Q8_0.gguf",
                  "mmproj-gemma-4-E4B-it-Q8_0.gguf")
             ],

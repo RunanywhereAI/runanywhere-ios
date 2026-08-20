@@ -124,6 +124,26 @@ final class ModelRecommendationEngineTests: XCTestCase {
         XCTAssertTrue(pipeline.isComplete)
     }
 
+    /// The VAD path used to skip the `can_run` gate every other component
+    /// applied, so a model commons had ruled out could still reach the pipeline.
+    func testVoicePipelineRejectsAVadCommonsRuledOut() {
+        let catalog = [
+            makeModel(id: "some-llm", name: "Some 1B", bytes: 900_000_000),
+            makeModel(id: "unknown-asr", name: "Unknown ASR", category: .speechRecognition, bytes: 80_000_000),
+            makeModel(id: "unknown-tts", name: "Unknown TTS", category: .speechSynthesis, bytes: 60_000_000),
+            makeModel(id: "silero-vad", name: "Silero VAD", category: .voiceActivityDetection, bytes: 2_000_000)
+        ]
+
+        let pipeline = engine.recommendVoicePipeline(
+            tier: .unknown,
+            appleFoundationAvailable: false,
+            from: catalog,
+            canRunByModelID: ["silero-vad": false]
+        )
+
+        XCTAssertNil(pipeline.vad)
+    }
+
     private func makeModel(
         id: String,
         name: String,

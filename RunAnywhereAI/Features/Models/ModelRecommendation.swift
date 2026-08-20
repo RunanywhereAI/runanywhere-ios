@@ -155,14 +155,17 @@ struct ModelRecommendationEngine {
                 from: byID,
                 canRunByModelID: canRunByModelID
             ),
-            // Sorted, not `first`: Dictionary order is undefined, so a catalog
-            // carrying a second voice-activity row would hand back a different
-            // VAD between launches for the same catalog. Every other fallback in
-            // this file orders by size, and this one now matches.
-            vad: byID[Self.vadModelID]
-                ?? byID.values
-                    .filter { $0.category == .voiceActivityDetection }
-                    .min { $0.consumerSizeBytes < $1.consumerSizeBytes }
+            // Through `pickFirst` like every other component, rather than a
+            // hand-rolled lookup. That one skipped the `can_run` gate the rest of
+            // the pipeline applies, so a VAD commons had already ruled out could
+            // still be handed back, and it read `Dictionary.values.first`, whose
+            // order is undefined once a catalog carries a second VAD row.
+            vad: pickFirst(
+                ids: [Self.vadModelID],
+                category: .voiceActivityDetection,
+                from: byID,
+                canRunByModelID: canRunByModelID
+            )
         )
     }
 

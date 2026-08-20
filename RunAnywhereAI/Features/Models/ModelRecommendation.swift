@@ -188,10 +188,10 @@ private extension ModelRecommendationEngine.TierPreferences {
     /// Smallest quantized / ONNX variants only.
     static let lowEnd = Self(
         llmIDs: [
-            "mlx-lfm2-350m",
-            "lfm2-350m-q4_k_m",
-            "mlx-qwen3-0.6b-4bit",
-            "qwen3-0.6b-q4_k_m"
+            "mlx-lfm2.5-230m-4bit",
+            "lfm2.5-230m-q4_k_m",
+            "mlx-qwen3.5-0.8b-mlx-4bit",
+            "qwen3.5-0.8b-q4_k_m"
         ],
         asrIDs: [
             "sherpa-onnx-whisper-tiny.en",
@@ -203,7 +203,7 @@ private extension ModelRecommendationEngine.TierPreferences {
         ],
         vlmIDs: [
             "smolvlm2-256m-video-instruct-q8_0",
-            "lfm2-vl-450m-q8_0"
+            "lfm2.5-vl-3b-q4_k_m"
         ],
         embeddingIDs: [
             "all-minilm-l6-v2",
@@ -214,11 +214,11 @@ private extension ModelRecommendationEngine.TierPreferences {
     /// A spread: tiny/fast, balanced, tool-calling, thinking.
     static let midRange = Self(
         llmIDs: [
-            "mlx-lfm2-350m",
-            "mlx-llama-3.2-1b-instruct-4bit",
-            "lfm2-1.2b-tool-q4_k_m",
-            "mlx-qwen3-0.6b-4bit",
-            "qwen3-1.7b-q4_k_m"
+            "mlx-lfm2.5-230m-4bit",
+            "mlx-lfm2.5-1.2b-instruct-4bit",
+            "lfm2.5-1.2b-instruct-q4_k_m",
+            "mlx-qwen3.5-2b-4bit",
+            "qwen3.5-2b-q4_k_m"
         ],
         asrIDs: [
             "mlx-qwen3-asr-0.6b-8bit",
@@ -241,7 +241,7 @@ private extension ModelRecommendationEngine.TierPreferences {
         // at 32 tok/s), so it leads instead. Qwen2-VL stays in the catalog —
         // pickable, just never the recommendation.
         vlmIDs: [
-            "lfm2-vl-450m-q8_0",
+            "lfm2.5-vl-3b-q4_k_m",
             "smolvlm2-500m-video-instruct-q8_0",
             "smolvlm2-256m-video-instruct-q8_0"
         ],
@@ -254,11 +254,11 @@ private extension ModelRecommendationEngine.TierPreferences {
     /// Full spread including a larger "genius" model.
     static let highEnd = Self(
         llmIDs: [
-            "mlx-llama-3.2-1b-instruct-4bit",
-            "llama-3.2-3b-instruct-q4_k_m",
-            "lfm2-1.2b-tool-q4_k_m",
-            "qwen3-4b-q4_k_m",
-            "mlx-qwen3-4b-4bit"
+            "mlx-lfm2.5-1.2b-instruct-4bit",
+            "granite-4.1-3b-q4_k_m",
+            "lfm2.5-1.2b-instruct-q4_k_m",
+            "qwen3.5-4b-q4_k_m",
+            "mlx-qwen3.5-4b-4bit"
         ],
         asrIDs: [
             "mlx-qwen3-asr-0.6b-8bit",
@@ -273,7 +273,7 @@ private extension ModelRecommendationEngine.TierPreferences {
         // (llama.cpp) and leads here; the MLX Qwen3-VL stays as the second
         // choice rather than the default no one chose.
         vlmIDs: [
-            "qwen2.5-vl-3b-instruct-q4_k_m",
+            "lfm2.5-vl-3b-q4_k_m",
             "mlx-qwen3-vl-4b-instruct-4bit"
         ],
         embeddingIDs: [

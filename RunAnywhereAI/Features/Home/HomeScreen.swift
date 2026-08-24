@@ -140,21 +140,25 @@ struct HomeScreen: View {
         }
     }
 
+    /// The node-graph editor is a pointer-and-keyboard tool, so it ships on Mac
+    /// only; `SideNavTab.available` already keeps the tab off iOS, which leaves
+    /// the other branch unreachable rather than merely unused.
+    @ViewBuilder
     private var workflowScreen: some View {
+        #if os(macOS)
+        WorkflowScreen()
+        #else
         Scaffold {
-            TopBar(
-                title: "Workflow",
-                leading: leading,
-                trailing: AnyView(BarButton(systemImage: "play.fill", tint: AppColors.brand) {})
-            )
+            TopBar(title: "Workflow", leading: leading)
         } content: {
             EmptyState(
                 symbol: "point.3.filled.connected.trianglepath.dotted",
-                title: "No workflow open",
-                detail: "Build one to automate a task on this device."
+                title: "Workflows run on Mac",
+                detail: "The graph editor needs a pointer and a keyboard."
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        #endif
     }
 
     private var modelsScreen: some View {

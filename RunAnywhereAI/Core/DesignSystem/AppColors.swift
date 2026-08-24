@@ -78,6 +78,13 @@ enum AppColors {
     static let danger = dynamic(light: 0xC8321F, dark: 0xFF7561)
     static let dangerMuted = dynamic(light: 0xFCEAE6, dark: 0x39160F)
 
+    /// Something is incomplete, not wrong. A workflow node with a required
+    /// argument still unset has nothing broken about it yet, and painting it
+    /// the same red as a failure tells the reader they have made a mistake
+    /// when they have simply not finished.
+    static let warning = dynamic(light: 0xB26B00, dark: 0xFFB454)
+    static let warningMuted = dynamic(light: 0xFDF1DF, dark: 0x3A2A10)
+
     static func dynamic(light: UInt32, dark: UInt32) -> Color {
         #if canImport(UIKit)
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) })

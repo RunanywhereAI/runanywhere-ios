@@ -40,6 +40,15 @@ enum AppTheme: String, CaseIterable, Identifiable {
 final class AppSettings {
     var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: Key.theme) } }
 
+    /// Written straight through to `AppColors`, which the whole design system
+    /// reads from. The root view is keyed on this so the tree rebuilds.
+    var mode: AppMode {
+        didSet {
+            UserDefaults.standard.set(mode.rawValue, forKey: Key.mode)
+            AppColors.mode = mode
+        }
+    }
+
     private(set) var usedBytes: Int64 = 0
     private(set) var freeBytes: Int64 = 0
     private(set) var isBusy = false
@@ -49,11 +58,19 @@ final class AppSettings {
 
     private enum Key {
         static let theme = "app.theme"
+        static let mode = "app.mode"
     }
 
     init() {
-        let raw = UserDefaults.standard.string(forKey: Key.theme) ?? AppTheme.system.rawValue
-        theme = AppTheme(rawValue: raw) ?? .system
+        let rawTheme = UserDefaults.standard.string(forKey: Key.theme) ?? AppTheme.system.rawValue
+        theme = AppTheme(rawValue: rawTheme) ?? .system
+
+        let rawMode = UserDefaults.standard.string(forKey: Key.mode) ?? AppMode.user.rawValue
+        let restored = AppMode(rawValue: rawMode) ?? .user
+        mode = restored
+        // Before any view reads a token, so the first frame is already the
+        // right colour rather than flashing the default palette.
+        AppColors.mode = restored
     }
 
     func refreshStorage() async {

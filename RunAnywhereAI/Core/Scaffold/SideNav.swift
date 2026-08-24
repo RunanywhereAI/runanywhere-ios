@@ -16,6 +16,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
     case chat
     case workflow
     case models
+    case more
     case settings
 
     var id: String { rawValue }
@@ -35,6 +36,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         case .chat: "Chat"
         case .workflow: "Workflow"
         case .models: "Manage Models"
+        case .more: "More"
         case .settings: "Settings"
         }
     }
@@ -44,6 +46,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         case .chat: "bubble.left.and.bubble.right"
         case .workflow: "point.3.filled.connected.trianglepath.dotted"
         case .models: "square.stack.3d.up"
+        case .more: "square.grid.2x2"
         case .settings: "gearshape.fill"
         }
     }
@@ -52,7 +55,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "Search chats"
         case .workflow: "Search workflows"
-        case .models, .settings: ""
+        case .models, .more, .settings: ""
         }
     }
 
@@ -60,7 +63,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "Recent"
         case .workflow: "Workflows"
-        case .models, .settings: ""
+        case .models, .more, .settings: ""
         }
     }
 
@@ -68,7 +71,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "No chats yet"
         case .workflow: "No workflows yet"
-        case .models, .settings: ""
+        case .models, .more, .settings: ""
         }
     }
 
@@ -76,7 +79,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "Start a new private conversation."
         case .workflow: "Build one to automate a task."
-        case .models, .settings: ""
+        case .models, .more, .settings: ""
         }
     }
 
@@ -84,7 +87,7 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "New Chat"
         case .workflow: "New Workflow"
-        case .models, .settings: ""
+        case .models, .more, .settings: ""
         }
     }
 }

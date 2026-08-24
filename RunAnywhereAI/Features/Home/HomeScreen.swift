@@ -15,7 +15,8 @@ struct HomeScreen: View {
     @State private var isNavOpen = false
     #endif
     @State private var selection = ""
-    @State private var tab: SideNavTab = .chat
+    @Binding var tab: SideNavTab
+    @State private var moreDestination: MoreDestination?
     @State private var modelState: ModelState = .none
     @State private var activeModelID: String?
     @State private var showModelPicker = false
@@ -25,7 +26,7 @@ struct HomeScreen: View {
     @State private var dictation = DictationController()
     @State private var defaults = DefaultModels()
     @State private var conversations = ConversationStore()
-    @State private var settings = AppSettings()
+    @Environment(AppSettings.self) private var settings
     @State private var importing: AttachmentImport?
 
     private let workflows: [DrawerEntry] = []
@@ -78,6 +79,7 @@ struct HomeScreen: View {
         case .chat: chatScreen
         case .workflow: workflowScreen
         case .models: modelsScreen
+        case .more: moreScreen
         case .settings: settingsScreen
         }
     }
@@ -169,6 +171,25 @@ struct HomeScreen: View {
         } content: {
             ManageModelsView(store: store)
         }
+    }
+
+    private var moreScreen: some View {
+        Scaffold {
+            TopBar(title: moreDestination?.title ?? "More", leading: moreLeading)
+        } content: {
+            MoreHost(destination: $moreDestination)
+        }
+    }
+
+    /// Inside a destination the leading slot is a way back to the hub; on the
+    /// hub itself it is whatever the sidebar normally puts there.
+    private var moreLeading: AnyView? {
+        guard moreDestination != nil else { return leading }
+        return AnyView(
+            BarButton(systemImage: "chevron.left") {
+                withAnimation(.easeOut(duration: 0.2)) { moreDestination = nil }
+            }
+        )
     }
 
     private var settingsScreen: some View {
@@ -271,7 +292,15 @@ struct HomeScreen: View {
 
     private func openFooter(_ id: String) {
         withAnimation(.easeInOut(duration: 0.2)) {
-            tab = id == "settings" ? .settings : .models
+            switch id {
+            case "settings": tab = .settings
+            case "more":
+                // Always land on the hub rather than whatever was open last;
+                // a footer item that reopens a sub-screen reads as broken.
+                moreDestination = nil
+                tab = .more
+            default: tab = .models
+            }
         }
     }
 

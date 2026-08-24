@@ -2,7 +2,7 @@ import SwiftUI
 import RunAnywhere
 
 struct SettingsScreen: View {
-    let settings: AppSettings
+    @Bindable var settings: AppSettings
     let defaults: DefaultModels
     let store: ModelStore
     let onManageModels: () -> Void
@@ -18,6 +18,16 @@ struct SettingsScreen: View {
                             themeChip(theme)
                         }
                         Spacer(minLength: 0)
+                    }
+                }
+
+                section("Mode") {
+                    VStack(alignment: .leading, spacing: Space.md) {
+                        modeToggle
+                        Text(settings.mode.caption)
+                            .appType(.meta)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -137,6 +147,51 @@ struct SettingsScreen: View {
                 .foregroundStyle(AppColors.textSecondary)
             content()
         }
+    }
+
+    /// A two-state switch rather than a picker: there are two modes and the
+    /// difference is visible the moment it moves, so a label per option would
+    /// be saying twice what the colour already says.
+    private var modeToggle: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: settings.mode.symbol)
+                .glyph(Glyph.sm, weight: .semibold)
+                .foregroundStyle(AppColors.accent)
+                .frame(width: 32, height: 32)
+                .background(
+                    RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+                        .fill(AppColors.accentMuted)
+                )
+
+            VStack(alignment: .leading, spacing: Space.hair) {
+                Text("Developer mode")
+                    .appType(.cardTitle)
+                    .foregroundStyle(AppColors.textPrimary)
+                Text(settings.mode.title)
+                    .appType(.meta)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer(minLength: Space.sm)
+
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { settings.mode == .developer },
+                    set: { isOn in
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            settings.mode = isOn ? .developer : .user
+                        }
+                    }
+                )
+            )
+            .labelsHidden()
+            .tint(AppColors.accent)
+        }
+        .padding(Space.md)
+        .card()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Developer mode, \(settings.mode.title)")
     }
 
     private func themeChip(_ theme: AppTheme) -> some View {

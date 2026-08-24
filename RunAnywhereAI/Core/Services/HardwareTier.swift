@@ -61,9 +61,8 @@ enum HardwareTier: Int, CaseIterable, Comparable {
 struct HardwareTierResolver {
     /// No typed `capability_tier` on DeviceInfo / commons today — surface
     /// unknown instead of local memory/ANE policy.
-    func resolve(from device: SystemDeviceInfo?) -> HardwareTier {
-        _ = device
-        return .unknown
+    func resolve() -> HardwareTier {
+        .unknown
     }
 
     /// Whether Apple's built-in Foundation model is available as the default

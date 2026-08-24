@@ -42,6 +42,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 153,406,304 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 190_000_000
+        ,
+            downloadSize: 153_406_304
         )
         await registerLLM(
             id: "lfm2.5-1.2b-instruct-q4_k_m",
@@ -49,6 +51,8 @@ enum ModelCatalogBootstrap {
             url: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
             framework: .llamaCpp,
             memoryRequirement: 900_000_000
+        ,
+            downloadSize: 730_895_168
         )
         // unsloth, not bartowski: the bartowski repo prefixes every artifact with
         // the org (`Qwen_Qwen3.5-0.8B-Q4_K_M.gguf`), so the un-prefixed filename
@@ -62,6 +66,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 620_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 532_517_120
         )
         // Qwen3.8-27B, the newest dense Qwen release (unsloth-published GGUF,
         // matching the rest of the Qwen3.x rows in this catalog).
@@ -73,6 +79,8 @@ enum ModelCatalogBootstrap {
             // 17,106,775,008 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 18_800_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 16_464_440_224
         )
         // Qwen3.6-35B-A3B (MoE, 35B total / 3B active, agentic-coding focused).
         await registerLLM(
@@ -83,6 +91,8 @@ enum ModelCatalogBootstrap {
             // 22,134,528,992 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 24_300_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 22_134_528_992
         )
         // Exact P0 NVIDIA checkpoint. The pinned llama.cpp fork has native
         // `nemotron` support; this exact Q4_K_M artifact was load/inference
@@ -96,6 +106,8 @@ enum ModelCatalogBootstrap {
             url: "\(nemotronMiniGGUFBaseURL)/Nemotron-Mini-4B-Instruct-Q4_K_M.gguf",
             framework: .llamaCpp,
             memoryRequirement: 2_697_387_072
+        ,
+            downloadSize: 52_417
         )
         // Exact P0 embedding artifact. The shared llama.cpp embedding primitive
         // returned a normalized 2048-dimensional vector for this pinned GGUF
@@ -110,6 +122,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .embedding,
             memoryRequirement: 749_352_096
+        ,
+            downloadSize: 52_409
         )
         // The same shared llama.cpp embedding path was smoke-tested with this
         // second P0 checkpoint, producing a finite normalized 2048-d vector.
@@ -123,6 +137,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .embedding,
             memoryRequirement: 807_690_624
+        ,
+            downloadSize: 52_413
         )
         // NVIDIA Llama Embed Nemotron 8B — the only NVIDIA embedder whose
         // portable GGUF was previously catalogued HNPU-only. Same shared
@@ -138,6 +154,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .embedding,
             memoryRequirement: 4_625_233_184
+        ,
+            downloadSize: 52_415
         )
         // NOTE: The NVIDIA Llama 3.1 Nemotron Nano 8B GGUF is intentionally NOT
         // registered. The Nano checkpoint keeps the standard Llama 3.1 GGUF
@@ -157,6 +175,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 248_302_272,
             supportsThinking: true
+        ,
+            downloadSize: 248_302_272
         )
         await registerLLM(
             id: "bonsai-4b-q1_0",
@@ -165,6 +185,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 572_270_624,
             supportsThinking: true
+        ,
+            downloadSize: 572_270_624
         )
         await registerLLM(
             id: "bonsai-8b-q1_0",
@@ -173,6 +195,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 1_158_654_496,
             supportsThinking: true
+        ,
+            downloadSize: 1_158_654_496
         )
         await registerLLM(
             id: "bonsai-27b-q1_0",
@@ -181,6 +205,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 3_803_452_480,
             supportsThinking: true
+        ,
+            downloadSize: 3_803_452_480
         )
         // Gemma 4 family, text-only (unsloth GGUF, no mmproj). Distinct from
         // the Gemma 4 E2B/E4B VLM rows above (`ggml-org` repo, decoder+mmproj
@@ -195,6 +221,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 3,106,738,272 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 3_400_000_000
+        ,
+            downloadSize: 3_106_738_272
         )
         await registerLLM(
             id: "gemma-4-e4b-it-text-q4_k_m",
@@ -203,6 +231,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 4,977,171,584 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 5_700_000_000
+        ,
+            downloadSize: 4_977_171_584
         )
         await registerLLM(
             id: "gemma-4-12b-it-q4_k_m",
@@ -211,6 +241,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 7,121,861,440 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 8_200_000_000
+        ,
+            downloadSize: 7_121_861_440
         )
         await registerLLM(
             id: "gemma-4-26b-a4b-it-q4_k_xl",
@@ -220,6 +252,8 @@ enum ModelCatalogBootstrap {
             // 17,010,980,576 B of weights (MoE, 26B total / 4B active) plus KV
             // cache and runtime overhead.
             memoryRequirement: 18_700_000_000
+        ,
+            downloadSize: 17_010_980_576
         )
         // Largest dense Gemma 4. Two quants offered on purpose: Q4_K_M for
         // quality, and the smaller UD-Q2_K_XL for devices that cannot fit the
@@ -231,6 +265,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 18,323,733,440 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 20_200_000_000
+        ,
+            downloadSize: 18_323_733_440
         )
         // IBM Granite 4.1 family, dense, Apache 2.0 (confirmed via HF
         // cardData.license). unsloth GGUF across all three sizes.
@@ -241,6 +277,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 2,099,502,400 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 2_400_000_000
+        ,
+            downloadSize: 2_099_502_400
         )
         await registerLLM(
             id: "granite-4.1-8b-q4_k_m",
@@ -252,6 +290,8 @@ enum ModelCatalogBootstrap {
             // bf16/nvfp4/mxfp4/mxfp8 (no clean 4-bit) plus one unofficial
             // third-party "-oQ4" repo from a non-reputable quantizer.
             memoryRequirement: 6_150_000_000
+        ,
+            downloadSize: 5_347_915_136
         )
         // Largest Granite 4.1, desktop-scale. Dense (verified: GGUF metadata
         // reports plain `granite` architecture, no expert-routing fields).
@@ -262,6 +302,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             // 17,490,241,472 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 19_200_000_000
+        ,
+            downloadSize: 17_490_241_472
         )
         logger.info("LLM models registered")
         #endif
@@ -278,6 +320,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 2_000_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 189_622
         )
         await registerLLM(
             id: "mlx-qwen3.5-4b-4bit",
@@ -286,6 +330,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 3_600_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 193_965
         )
         await registerLLM(
             id: "mlx-qwen3.5-9b-4bit",
@@ -294,6 +340,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 7_000_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 235_213
         )
         await registerMultiFile(
             id: "mlx-llama-3.1-nemotron-nano-8b-v1-4bit",
@@ -343,6 +391,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .language,
             memoryRequirement: 4_534_806_075
+        ,
+            downloadSize: 4_534_806_075
         )
         // This is the original Nemotron decoder (model_type=nemotron), not a
         // Llama-family conversion. MLXRuntime registers RunAnywhere's exact
@@ -389,6 +439,8 @@ enum ModelCatalogBootstrap {
             modality: .language,
             memoryRequirement: 2_392_679_103,
             contextLength: 4_096
+        ,
+            downloadSize: 2_392_679_103
         )
         // PrismML Bonsai family 1-bit MLX. Needs the PrismML mlx-swift fork
         // (bits=1 quantization support) pinned in Package.swift/Package.resolved.
@@ -399,6 +451,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 269_060_904,
             supportsThinking: true
+        ,
+            downloadSize: 215_287
         )
         await registerLLM(
             id: "mlx-bonsai-4b-1bit",
@@ -407,6 +461,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 628_865_840,
             supportsThinking: true
+        ,
+            downloadSize: 242_790
         )
         await registerLLM(
             id: "mlx-bonsai-8b-1bit",
@@ -415,6 +471,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 1_280_131_424,
             supportsThinking: true
+        ,
+            downloadSize: 273_027
         )
         // PrismML Bonsai-27B 1-bit MLX (~5.1 GB). Experimental — needs
         // mlx-swift-lm support for qwen3_5 / 1-bit Bonsai.
@@ -425,6 +483,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 5_129_115_752,
             supportsThinking: true
+        ,
+            downloadSize: 295_348
         )
         await registerLLM(
             id: "mlx-qwen3.5-0.8b-mlx-4bit",
@@ -433,6 +493,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 622_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 189_779
         )
         // A PLAIN REPO ref, not a `/4bit` subfolder ref like LFM2.5-2.6B-MLX
         // below. LiquidAI publishes one precision per repo here — the 4-bit
@@ -446,6 +508,8 @@ enum ModelCatalogBootstrap {
             // 150,867,598 B for the whole repo (146 MB of that is
             // model.safetensors) plus KV cache and Metal runtime overhead.
             memoryRequirement: 200_000_000
+        ,
+            downloadSize: 204_611
         )
         await registerLLM(
             id: "mlx-lfm2.5-1.2b-instruct-4bit",
@@ -453,6 +517,8 @@ enum ModelCatalogBootstrap {
             url: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-MLX-4bit",
             framework: .mlx,
             memoryRequirement: 628_000_000
+        ,
+            downloadSize: 192_959
         )
         await registerLLM(
             id: "mlx-qwen3.8-27b-4bit",
@@ -463,6 +529,8 @@ enum ModelCatalogBootstrap {
             // runtime overhead.
             memoryRequirement: 17_700_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 206_048
         )
         await registerLLM(
             id: "mlx-qwen3.6-35b-a3b-4bit",
@@ -473,6 +541,8 @@ enum ModelCatalogBootstrap {
             // active) plus KV cache and Metal runtime overhead.
             memoryRequirement: 22_400_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 210_952
         )
         // IBM Granite 4.1, plain dense transformer. Verified against the
         // pinned mlx-swift-lm 3.31.4 checkout: both repos' config.json declare
@@ -488,6 +558,8 @@ enum ModelCatalogBootstrap {
             // 2,134,391,329 B for the whole repo plus KV cache and Metal
             // runtime overhead.
             memoryRequirement: 2_350_000_000
+        ,
+            downloadSize: 189_386
         )
         await registerLLM(
             id: "mlx-granite-4.1-30b-4bit",
@@ -497,6 +569,8 @@ enum ModelCatalogBootstrap {
             // 18,041,244,771 B for the whole repo plus KV cache and Metal
             // runtime overhead.
             memoryRequirement: 19_800_000_000
+        ,
+            downloadSize: 190_615
         )
         await registerLLM(
             id: "mlx-qwen3-vl-4b-instruct-4bit",
@@ -505,6 +579,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .multimodal,
             memoryRequirement: 4_000_000_000
+        ,
+            downloadSize: 250_247
         )
         // A PLAIN REPO ref for the same reason as the LFM2.5-230M row above:
         // LiquidAI publishes one precision per repo here, so the 4-bit weights
@@ -529,6 +605,8 @@ enum ModelCatalogBootstrap {
             // model.safetensors) plus KV cache, vision activations and Metal
             // runtime overhead.
             memoryRequirement: 3_000_000_000
+        ,
+            downloadSize: 215_490
         )
         // Speaker diarization / semantic segmentation catalog rows are registered
         // under `#if canImport(ONNXRuntime)` below (ONNX Sortformer + SegFormer).
@@ -553,6 +631,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 450_000_000
+        ,
+            downloadSize: 278_828_032
         )
         await registerMultiFile(
             id: "smolvlm2-500m-video-instruct-q8_0",
@@ -566,6 +646,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 800_000_000
+        ,
+            downloadSize: 545_593_888
         )
         await registerArchive(
             id: "smolvlm-500m-instruct-q8_0",
@@ -576,6 +658,8 @@ enum ModelCatalogBootstrap {
             archive: .tarGz,
             structure: .directoryBased,
             memoryRequirement: 600_000_000
+        ,
+            downloadSize: 520_771_812
         )
         await registerMultiFile(
             id: "gemma-4-e2b-it-q8_0",
@@ -589,6 +673,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 3_000_000_000
+        ,
+            downloadSize: 5_524_865_216
         )
         await registerMultiFile(
             id: "gemma-4-e4b-it-q4_k_m",
@@ -603,6 +689,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 5_500_000_000
+        ,
+            downloadSize: 5_150_682_208
         )
         // LFM2.5-VL, the current generation of the LFM2-VL row above. Q4_K_M
         // decoder paired with the Q8_0 mmproj — the same split the Qwen2-VL,
@@ -628,6 +716,8 @@ enum ModelCatalogBootstrap {
             // 2,257,563,360 B of weights (1,674,454,240 decoder +
             // 583,109,120 mmproj) plus KV cache and runtime overhead.
             memoryRequirement: 2_800_000_000
+        ,
+            downloadSize: 2_257_563_360
         )
         // Fara1.5 — Computer-Use Agent profile model, mirrors the Android
         // catalog row (`ModelCatalog.kt`) so `RunAnywhere.CUA` has a
@@ -645,7 +735,9 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             modality: .multimodal,
             memoryRequirement: 3_300_000_000,
+            downloadSize: 3_383_083_424,
             cuaProfile: RunAnywhere.CUA.faraProfile
+        
         )
         // Meta Muse Glimmer 30B (Meta Superintelligence Labs, Apache 2.0,
         // released 2026-08-10). Genuinely vision-capable — unsloth ships a
@@ -671,6 +763,8 @@ enum ModelCatalogBootstrap {
             // so it is registered like every other heavy row and left to the
             // existing HardwareTier/recommendation layer at runtime.
             memoryRequirement: 20_600_000_000
+        ,
+            downloadSize: 17_929_907_456
         )
         // NVIDIA Nemotron 3 Nano Omni 30B-A3B Reasoning (MoE, 31B total / 3B
         // active). This has a real mmproj (image projector), so it registers
@@ -695,6 +789,8 @@ enum ModelCatalogBootstrap {
             // Desktop-scale, same convention as Muse Glimmer above.
             memoryRequirement: 28_000_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 25_474_563_776
         )
         logger.info("VLM models registered")
         #endif
@@ -710,6 +806,8 @@ enum ModelCatalogBootstrap {
             archive: .tarGz,
             structure: .nestedDirectory,
             memoryRequirement: 75_000_000
+        ,
+            downloadSize: 152_777_070
         )
         let parakeetTDTV2SherpaBaseURL =
             "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/resolve/1ab9323565ddb038682214b292f588070a538ce2"
@@ -725,6 +823,8 @@ enum ModelCatalogBootstrap {
             framework: .sherpa,
             modality: .speechRecognition,
             memoryRequirement: 661_190_513
+        ,
+            downloadSize: 661_190_513
         )
         let parakeetTDTV3SherpaBaseURL =
             "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78"
@@ -740,6 +840,8 @@ enum ModelCatalogBootstrap {
             framework: .sherpa,
             modality: .speechRecognition,
             memoryRequirement: 670_478_772
+        ,
+            downloadSize: 670_478_772
         )
         // Runtime RAM and the exact final download footprint are planned
         // independently.
@@ -765,6 +867,8 @@ enum ModelCatalogBootstrap {
             framework: .sherpa,
             modality: .speechRecognition,
             memoryRequirement: 207_170_046
+        ,
+            downloadSize: 207_170_046
         )
         #endif
 
@@ -818,6 +922,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 1_010_773_761
+        ,
+            downloadSize: 1_010_771_234
         )
         await registerMultiFile(
             id: "mlx-glm-asr-nano-2512-4bit",
@@ -867,6 +973,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 1_288_437_789
+        ,
+            downloadSize: 1_288_435_138
         )
 
         // The pinned MLXAudioSTT Parakeet loader reads config.json and every
@@ -892,6 +1000,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 4_250_718_357
+        ,
+            downloadSize: 4_250_718_357
         )
 
         let parakeetTDTV2BaseURL =
@@ -914,6 +1024,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 2_471_596_080
+        ,
+            downloadSize: 2_471_596_080
         )
 
         let parakeetTDTV3BaseURL =
@@ -936,6 +1048,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 2_508_532_829
+        ,
+            downloadSize: 2_508_532_829
         )
 
         let parakeetRNNT11BBaseURL =
@@ -958,6 +1072,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 4_282_283_914
+        ,
+            downloadSize: 4_282_283_914
         )
 
         let nemotronStreamingASRBaseURL =
@@ -980,6 +1096,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechRecognition,
             memoryRequirement: 755_758_528
+        ,
+            downloadSize: 755_758_528
         )
 
         #if canImport(ONNXRuntime)
@@ -993,6 +1111,8 @@ enum ModelCatalogBootstrap {
             archive: .tarGz,
             structure: .nestedDirectory,
             memoryRequirement: 65_000_000
+        ,
+            downloadSize: 67_389_394
         )
         await registerArchive(
             id: "vits-piper-en_GB-alba-medium",
@@ -1003,6 +1123,8 @@ enum ModelCatalogBootstrap {
             archive: .tarGz,
             structure: .nestedDirectory,
             memoryRequirement: 65_000_000
+        ,
+            downloadSize: 67_386_227
         )
         #endif
 
@@ -1046,6 +1168,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 82_220_814
+        ,
+            downloadSize: 82_218_200
         )
         await registerLLM(
             id: "mlx-kokoro-82m-6bit",
@@ -1054,6 +1178,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 309_640_166
+        ,
+            downloadSize: 150_556
         )
         await registerMultiFile(
             id: "mlx-pocket-tts",
@@ -1115,6 +1241,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 420_000_000
+        ,
+            downloadSize: 240_320_741
         )
         await registerMultiFile(
             id: "mlx-kitten-tts-nano-0.8-5bit",
@@ -1140,6 +1268,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 120_000_000
+        ,
+            downloadSize: 34_633_904
         )
         await registerLLM(
             id: "mlx-qwen3-tts-12hz-0.6b-base-4bit",
@@ -1148,6 +1278,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 1_711_328_624
+        ,
+            downloadSize: 148_035
         )
         await registerMultiFile(
             id: "mlx-qwen3-tts-12hz-0.6b-base-8bit",
@@ -1205,6 +1337,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .speechSynthesis,
             memoryRequirement: 1_991_299_138
+        ,
+            downloadSize: 1_991_296_593
         )
 
         #if canImport(ONNXRuntime)
@@ -1221,6 +1355,8 @@ enum ModelCatalogBootstrap {
             // size guard. An over-stated 5 MB tripped the guard on a
             // valid ~2.3 MB download.
             memoryRequirement: 2_327_524
+        ,
+            downloadSize: 2_327_524
         )
 
         // --- Speaker diarization (NVIDIA Sortformer, ONNX) --------------------
@@ -1294,6 +1430,8 @@ enum ModelCatalogBootstrap {
             framework: .onnx,
             modality: .embedding,
             memoryRequirement: 25_500_000
+        ,
+            downloadSize: 90_619_114
         )
         #endif
         await registerLLM(
@@ -1303,6 +1441,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             modality: .embedding,
             memoryRequirement: 350_000_000
+        ,
+            downloadSize: 227_629
         )
         logger.info("Embedding models registered")
 
@@ -1320,6 +1460,8 @@ enum ModelCatalogBootstrap {
             // 730_895_360 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 900_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 730_895_360
         )
         await registerLLM(
             id: "qwen3.5-2b-q4_k_m",
@@ -1329,6 +1471,8 @@ enum ModelCatalogBootstrap {
             // 1_280_835_840 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 1_550_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 1_280_835_840
         )
         await registerLLM(
             id: "qwen3.5-4b-q4_k_m",
@@ -1338,6 +1482,8 @@ enum ModelCatalogBootstrap {
             // 2_740_937_888 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 3_350_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 2_740_937_888
         )
         await registerLLM(
             id: "qwen3.5-9b-q4_k_m",
@@ -1347,6 +1493,8 @@ enum ModelCatalogBootstrap {
             // 5_680_522_464 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 6_950_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 5_680_522_464
         )
         await registerLLM(
             id: "maple-preview-tq1_0",
@@ -1356,6 +1504,8 @@ enum ModelCatalogBootstrap {
             // 4_984_016_416 B of weights plus KV cache and runtime overhead.
             memoryRequirement: 6_100_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 4_984_016_416
         )
         #endif
 
@@ -1403,6 +1553,8 @@ enum ModelCatalogBootstrap {
             // compares against the true total and cannot reject this bundle.
             memoryRequirement: 3_450_000_000,
             supportsThinking: true
+        ,
+            downloadSize: 542_203_422
         )
 
         // The two small siblings, same engine, same folder-ref rules as above.
@@ -1442,6 +1594,8 @@ enum ModelCatalogBootstrap {
             // download claim — the live HF folder total (369 MB) is what the
             // post-download size floor compares against for a folder ref.
             memoryRequirement: 520_000_000
+        ,
+            downloadSize: 138_955_025
         )
         await registerLLM(
             id: "lfm2.5-350m-ane",
@@ -1451,6 +1605,8 @@ enum ModelCatalogBootstrap {
             modality: .language,
             // Measured 575 MB peak RSS + ~15%; HF folder total is 494 MB.
             memoryRequirement: 660_000_000
+        ,
+            downloadSize: 138_955_206
         )
         logger.info("Apple Neural Engine models registered")
 
@@ -1485,6 +1641,8 @@ enum ModelCatalogBootstrap {
             framework: .coreml,
             modality: .speechRecognition,
             memoryRequirement: 1_600_000_000
+        ,
+            downloadSize: 11_653_415
         )
 
         // --- The SAME model on the other two accelerators -----------------------
@@ -1501,6 +1659,8 @@ enum ModelCatalogBootstrap {
             framework: .llamaCpp,
             memoryRequirement: 1_674_575_872,
             supportsThinking: true
+        ,
+            downloadSize: 1_674_455_040
         )
         #endif
         // MLX ships each precision in its OWN SUBFOLDER, so this is a folder ref
@@ -1514,6 +1674,8 @@ enum ModelCatalogBootstrap {
             framework: .mlx,
             memoryRequirement: 1_583_349_760,
             supportsThinking: true
+        ,
+            downloadSize: 1_601_108_788
         )
         // Only the ANE and MLX registrations above are unconditional; the CPU one
         // is compiled out when LlamaCPPRuntime is not linked, so do not claim it.
@@ -1619,11 +1781,12 @@ enum ModelCatalogBootstrap {
         memoryRequirement: Int64,
         supportsThinking: Bool = false,
         supportsLora: Bool = false
+    ,
+        downloadSize: Int64? = nil
     ) async {
         guard framework != .mlx || mlxCatalogEnabled else { return }
         do {
-            _ = try await RunAnywhere.models.register(
-                .url(
+            var registration = ModelRegistration.url(
                     url,
                     name: name,
                     framework: framework,
@@ -1633,7 +1796,8 @@ enum ModelCatalogBootstrap {
                     supportsThinking: supportsThinking,
                     supportsLora: supportsLora
                 )
-            )
+            if let downloadSize { registration.downloadSizeBytes = downloadSize }
+            _ = try await RunAnywhere.models.register(registration)
         } catch {
             logger.warning("Failed to register model \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
@@ -1648,11 +1812,12 @@ enum ModelCatalogBootstrap {
         archive: ArchiveType,
         structure: ArchiveStructure,
         memoryRequirement: Int64
+    ,
+        downloadSize: Int64? = nil
     ) async {
         guard framework != .mlx || mlxCatalogEnabled else { return }
         do {
-            _ = try await RunAnywhere.models.register(
-                .archive(
+            var registration = ModelRegistration.archive(
                     url,
                     structure: structure,
                     name: name,
@@ -1662,7 +1827,8 @@ enum ModelCatalogBootstrap {
                     id: id,
                     memoryRequirementBytes: memoryRequirement
                 )
-            )
+            if let downloadSize { registration.downloadSizeBytes = downloadSize }
+            _ = try await RunAnywhere.models.register(registration)
         } catch {
             logger.warning("Failed to register archive model \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
@@ -1713,8 +1879,7 @@ enum ModelCatalogBootstrap {
             return
         }
         do {
-            _ = try await RunAnywhere.models.register(
-                .multiFile(
+            var registration = ModelRegistration.multiFile(
                     descriptors,
                     id: id,
                     name: name,
@@ -1726,7 +1891,8 @@ enum ModelCatalogBootstrap {
                     supportsThinking: supportsThinking,
                     cuaProfile: cuaProfile
                 )
-            )
+            if let downloadSize { registration.downloadSizeBytes = downloadSize }
+            _ = try await RunAnywhere.models.register(registration)
         } catch {
             logger.warning("Failed to register multi-file model \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }

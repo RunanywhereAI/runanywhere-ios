@@ -39,6 +39,7 @@ extension WorkflowNodeInspector {
                 dailyRows
             case .cron:
                 TextField("Cron expression", text: setting(\.scheduleCron, field: "scheduleCron"))
+                LabeledContent("Next", value: Self.cronNextFire(node.settings.scheduleCron))
             case .interval, .unspecified, .UNRECOGNIZED:
                 intervalRows(node)
             }
@@ -86,14 +87,28 @@ extension WorkflowNodeInspector {
         let base = "Schedules fire while the app is running. There is no background " +
             "execution and no catch-up after a relaunch."
         let cron = node.settings.scheduleKind == .cron
-            ? " This host does not parse cron, so a cron trigger is stored but never fires."
+            ? " Cron takes five fields — minute, hour, day of month, month, day of week — " +
+                "read in this device's time zone."
             : ""
         return footnote(base + cron)
     }
 
+    /// Resolved through the SDK as the expression is typed, so a mistake shows
+    /// up here rather than when the document is saved.
+    private static func cronNextFire(_ expression: String) -> String {
+        guard !expression.isEmpty else { return "—" }
+        do {
+            guard let next = try RunAnywhere.workflows.nextCronFireDate(expression: expression)
+            else { return "Never fires" }
+            return WorkflowScheduleFormat.nextFire(next)
+        } catch {
+            return "Not a valid expression"
+        }
+    }
+
     private var seedItemsSection: some View {
         Section {
-            codeEditor(setting(\.triggerItemsJSON, field: "triggerItemsJSON"), minHeight: 80)
+            codeEditor(setting(\.triggerItemsJSON, field: "triggerItemsJSON"), minHeight: EditorHeight.short)
         } header: {
             Text("Initial Items")
         } footer: {
@@ -109,13 +124,13 @@ extension WorkflowNodeInspector {
     func aiSections(_ node: WorkflowNode) -> some View {
         switch node.kind {
         case .llmGenerate:
-            promptSection(minHeight: 90)
+            promptSection(minHeight: EditorHeight.prose)
             modelSection(.language)
             Section("Generation") { generationRows() }
         case .llmStructured:
-            promptSection(minHeight: 70)
+            promptSection(minHeight: EditorHeight.prose)
             Section {
-                codeEditor(setting(\.jsonSchema, field: "jsonSchema"), minHeight: 140)
+                codeEditor(setting(\.jsonSchema, field: "jsonSchema"), minHeight: EditorHeight.code)
             } header: {
                 Text("JSON Schema")
             } footer: {
@@ -125,7 +140,7 @@ extension WorkflowNodeInspector {
             modelSection(.language)
             Section("Generation") { generationRows() }
         case .vision:
-            promptSection(minHeight: 70)
+            promptSection(minHeight: EditorHeight.prose)
             binaryKeySection("Image Attachment", hint: "The attachment on the incoming item " +
                              "holding the image bytes — a File Read node in binary mode makes one.")
             modelSection(.vision)
@@ -239,7 +254,7 @@ extension WorkflowNodeInspector {
                         ), in: 0...1)
                         Text(threshold.formatted(.number.precision(.fractionLength(2))))
                             .appType(.monoMetric)
-                            .frame(width: 44, alignment: .trailing)
+                            .frame(width: InspectorWidth.readout, alignment: .trailing)
                     }
                 }
             }
@@ -361,7 +376,7 @@ extension WorkflowNodeInspector {
             loopSections(node)
         case .code:
             Section {
-                codeEditor(setting(\.codeSource, field: "codeSource"), minHeight: 140)
+                codeEditor(setting(\.codeSource, field: "codeSource"), minHeight: EditorHeight.code)
             } header: {
                 Text("JavaScript")
             } footer: {
@@ -505,7 +520,11 @@ extension WorkflowNodeInspector {
                 Toggle("Append", isOn: setting(\.fileAppend, field: "fileAppend"))
             }
             Section {
-                codeEditor(setting(\.fileContent, field: "fileContent"), minHeight: 90, monospaced: false)
+                codeEditor(
+                    setting(\.fileContent, field: "fileContent"),
+                    minHeight: EditorHeight.prose,
+                    monospaced: false
+                )
             } header: {
                 Text("Content")
             } footer: {
@@ -670,7 +689,7 @@ extension WorkflowNodeInspector {
 
         if node.settings.httpMethod != .get {
             Section("Body") {
-                codeEditor(setting(\.httpBody, field: "httpBody"), minHeight: 80)
+                codeEditor(setting(\.httpBody, field: "httpBody"), minHeight: EditorHeight.short)
             }
         }
     }

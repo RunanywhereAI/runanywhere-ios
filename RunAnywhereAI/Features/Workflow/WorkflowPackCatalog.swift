@@ -55,7 +55,7 @@ enum WorkflowPackCatalog {
             return WorkflowNodePresentation(
                 title: "Missing Node Pack",
                 systemImage: missingSymbol,
-                accent: AppColors.danger,
+                accent: AppColors.warning,
                 missingPackID: node.settings.packID
             )
         }
@@ -112,17 +112,27 @@ enum WorkflowPackCatalog {
     }
 
     /// A pack written by someone else picked its own accent, so that colour
-    /// arrives as packed RGB data rather than from this app's palette. Packs
-    /// authored here store one of `WorkflowPackAccent`'s values and are drawn
-    /// through the matching token instead.
+    /// arrives as packed RGB data rather than from this app's palette.
+    ///
+    /// An unrecognised value is snapped to the nearest swatch rather than drawn
+    /// as it arrived: a literal `Color(.sRGB,…)` has no dark-mode variant, so a
+    /// pack authored on a light-mode machine would render its icon invisible
+    /// here. Nearest is measured in plain RGB distance, which is crude but
+    /// enough to keep a blue pack blue.
     static func color(packedRGB: UInt32) -> Color {
         if let known = WorkflowPackAccent(rawValue: packedRGB) { return known.color }
-        return Color(
-            .sRGB,
-            red: Double((packedRGB >> 16) & 0xFF) / 255,
-            green: Double((packedRGB >> 8) & 0xFF) / 255,
-            blue: Double(packedRGB & 0xFF) / 255
-        )
+        let nearest = WorkflowPackAccent.allCases.min { lhs, rhs in
+            distance(packedRGB, lhs.rawValue) < distance(packedRGB, rhs.rawValue)
+        }
+        return nearest?.color ?? fallbackAccent
+    }
+
+    private static func distance(_ lhs: UInt32, _ rhs: UInt32) -> Int {
+        (0..<3).reduce(0) { total, byte in
+            let shift = UInt32(byte * 8)
+            let difference = Int((lhs >> shift) & 0xFF) - Int((rhs >> shift) & 0xFF)
+            return total + difference * difference
+        }
     }
 }
 

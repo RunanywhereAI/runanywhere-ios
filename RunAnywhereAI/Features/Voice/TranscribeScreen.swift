@@ -23,7 +23,7 @@ struct TranscribeScreen: View {
 
                 transcript
 
-                VoiceSection(title: "Model") {
+                ScreenSection(title: "Model") {
                     VoiceModelRow(slot: model.stt, isEnabled: !model.isRecording) {
                         picking = .speech
                     }
@@ -65,13 +65,13 @@ struct TranscribeScreen: View {
     private func modeChip(_ mode: TranscribeMode) -> some View {
         let isActive = model.mode == mode
         return Button {
-            withAnimation(.easeInOut(duration: 0.2)) { model.mode = mode }
+            withAnimation(Motion.fade) { model.mode = mode }
         } label: {
             Text(mode.title)
                 .appType(.meta)
                 .foregroundStyle(isActive ? AppColors.onBrand : AppColors.textSecondary)
                 .padding(.horizontal, Space.lg)
-                .frame(height: 32)
+                .frame(height: Control.pill)
                 .background(Capsule().fill(isActive ? AppColors.brandSelected : AppColors.surfaceMuted))
                 .contentShape(Capsule())
         }
@@ -140,7 +140,7 @@ struct TranscribeScreen: View {
     // MARK: - Transcript
 
     private var transcript: some View {
-        VoiceSection(title: "Transcript") {
+        ScreenSection(title: "Transcript") {
             VStack(alignment: .leading, spacing: Space.md) {
                 if model.hasResult {
                     Text(model.displayText)
@@ -151,8 +151,12 @@ struct TranscribeScreen: View {
                         .textSelection(.enabled)
 
                     HStack(spacing: Space.sm) {
-                        actionChip("Copy", symbol: "doc.on.doc") { copy(model.displayText) }
-                        actionChip("Clear", symbol: "xmark") { model.clear() }
+                        PillButton(title: "Copy", symbol: "doc.on.doc", tint: AppColors.textSecondary) {
+                            copy(model.displayText)
+                        }
+                        PillButton(title: "Clear", symbol: "xmark", tint: AppColors.textSecondary) {
+                            model.clear()
+                        }
                         Spacer(minLength: 0)
                     }
                 } else {
@@ -166,23 +170,6 @@ struct TranscribeScreen: View {
             .frame(minHeight: 120, alignment: .top)
             .card()
         }
-    }
-
-    private func actionChip(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Space.xs) {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-                Text(title)
-                    .appType(.meta)
-            }
-            .foregroundStyle(AppColors.textSecondary)
-            .padding(.horizontal, Space.md)
-            .frame(height: 30)
-            .background(Capsule().fill(AppColors.surfaceMuted))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 
     private func copy(_ text: String) {

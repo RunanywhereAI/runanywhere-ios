@@ -87,7 +87,7 @@ struct WorkflowCanvasSurface: View {
         .focusEffectDisabled()
         .focused($isFocused)
         .onDeleteCommand {
-            withAnimation(.easeOut(duration: 0.2)) { viewModel.deleteSelection() }
+            withAnimation(Motion.quick) { viewModel.deleteSelection() }
         }
         .onExitCommand {
             viewModel.cancelDraft()
@@ -358,17 +358,17 @@ struct WorkflowCanvasSurface: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .scaleEffect(camera.zoom, anchor: .topLeading)
         .offset(camera.pan)
-        .animation(.spring(response: 0.32, dampingFraction: 0.82),
+        .animation(Motion.expand,
                    value: viewModel.graph.nodes.map(\.id))
     }
 
     @ViewBuilder private var edgeDeleteAffordance: some View {
         if let edgeID = viewModel.selectedEdgeID, let mid = edgeMidpoint(edgeID) {
             Button {
-                withAnimation(.easeOut(duration: 0.2)) { viewModel.deleteEdge(edgeID) }
+                withAnimation(Motion.quick) { viewModel.deleteEdge(edgeID) }
             } label: {
                 Image(systemName: "xmark")
-                    .appType(.chip)
+                    .glyph(Glyph.xs, weight: .semibold)
                     .foregroundStyle(AppColors.danger)
                     .frame(width: Space.xl - Space.hair, height: Space.xl - Space.hair)
                     .background(AppColors.surface, in: Circle())

@@ -25,10 +25,10 @@ struct ComputerUseScreen: View {
                 ComputerUseModelCard(store: store, model: model)
 
                 if model.profile != nil {
-                    section("Screenshot") { canvas }
-                    section("Goal") { goal }
+                    ScreenSection(title: "Screenshot") { canvas }
+                    ScreenSection(title: "Goal") { goal }
                     if model.isRunning || !model.rawOutput.isEmpty || model.action != nil {
-                        section("Parsed action") { result }
+                        ScreenSection(title: "Parsed action") { result }
                     }
                 }
             }
@@ -125,10 +125,12 @@ struct ComputerUseScreen: View {
         // Screenshots on a Mac land on the Desktop, not in the photo library,
         // so the file importer is the only affordance that finds them there.
         #if os(macOS)
-        chip(title, symbol: "photo") { isImporting = true }
+        PillButton(title: title, symbol: "photo", tint: AppColors.brand, fill: AppColors.brandMuted) {
+            isImporting = true
+        }
         #else
         PhotosPicker(selection: $photo, matching: .images) {
-            chipLabel(title, symbol: "photo")
+            PillLabel(title: title, symbol: "photo", tint: AppColors.brand, fill: AppColors.brandMuted)
         }
         .buttonStyle(.plain)
         #endif
@@ -151,15 +153,26 @@ struct ComputerUseScreen: View {
 
             HStack(spacing: Space.sm) {
                 if model.isRunning {
-                    chip("Stop", symbol: "stop.fill", tint: AppColors.danger, wash: AppColors.dangerMuted) {
+                    PillButton(
+                        title: "Stop",
+                        symbol: "stop.fill",
+                        tint: AppColors.danger,
+                        fill: AppColors.dangerMuted
+                    ) {
                         model.cancel()
                     }
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    chip("Run one step", symbol: "play.fill") { model.run() }
-                        .disabled(!model.canRun)
-                        .opacity(model.canRun ? 1 : 0.5)
+                    PillButton(
+                        title: "Run one step",
+                        symbol: "play.fill",
+                        tint: AppColors.brand,
+                        fill: AppColors.brandMuted,
+                        isEnabled: model.canRun
+                    ) {
+                        model.run()
+                    }
                 }
 
                 Spacer(minLength: 0)
@@ -212,14 +225,7 @@ struct ComputerUseScreen: View {
     private func detail(_ action: CuaAction) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack(spacing: Space.sm) {
-                Image(systemName: action.kind.symbol)
-                    .glyph(Glyph.md)
-                    .foregroundStyle(AppColors.brand)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .fill(AppColors.brandMuted)
-                    )
+                GlyphTile(symbol: action.kind.symbol)
 
                 Text(action.kind.title)
                     .appType(.sectionTitle)
@@ -285,51 +291,6 @@ struct ComputerUseScreen: View {
               let image = ComputerUseImage(data: data) else { return }
         model.screenshot = image
         model.clearResult()
-    }
-
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content()
-        }
-    }
-
-    private func chip(
-        _ title: String,
-        symbol: String,
-        tint: Color = AppColors.brand,
-        wash: Color = AppColors.brandMuted,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            chipLabel(title, symbol: symbol, tint: tint, wash: wash)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func chipLabel(
-        _ title: String,
-        symbol: String,
-        tint: Color = AppColors.brand,
-        wash: Color = AppColors.brandMuted
-    ) -> some View {
-        HStack(spacing: Space.xs) {
-            Image(systemName: symbol)
-                .glyph(Glyph.xs, weight: .semibold)
-            Text(title)
-                .appType(.meta)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, Space.md)
-        .frame(height: 32)
-        .background(Capsule().fill(wash))
-        .contentShape(Capsule())
     }
 
     private func image(_ screenshot: ComputerUseImage) -> Image {

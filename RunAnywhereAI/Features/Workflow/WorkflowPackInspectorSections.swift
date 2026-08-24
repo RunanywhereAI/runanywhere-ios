@@ -96,7 +96,8 @@ extension WorkflowNodeInspector {
                     .appType(.caption)
             } icon: {
                 Image(systemName: "shippingbox.badge.clock")
-                    .foregroundStyle(AppColors.danger)
+                    .glyph(Glyph.sm, weight: .semibold)
+                    .foregroundStyle(AppColors.warning)
             }
             LabeledContent("Pack id") {
                 Text(node.settings.packID.isEmpty ? "—" : node.settings.packID)

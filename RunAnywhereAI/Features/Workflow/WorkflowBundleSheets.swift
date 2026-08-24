@@ -260,7 +260,7 @@ private struct WorkflowImportPicker: View {
             VStack(alignment: .leading, spacing: Space.xs) {
                 HStack(spacing: Space.sm) {
                     Image(systemName: pack.resolvedSymbol)
-                        .appType(.caption)
+                        .glyph(Glyph.xs, weight: .semibold)
                         .foregroundStyle(pack.accent)
                     Text(pack.displayName)
                         .appType(.body)
@@ -280,7 +280,7 @@ private struct WorkflowImportPicker: View {
             VStack(alignment: .leading, spacing: Space.hair) {
                 Label("Runs JavaScript on this machine", systemImage: "exclamationmark.shield.fill")
                     .appType(.chip)
-                    .foregroundStyle(AppColors.danger)
+                    .foregroundStyle(AppColors.warning)
                 if granted.isEmpty {
                     Text("Asks for no extra access.")
                         .appType(.caption)
@@ -295,7 +295,7 @@ private struct WorkflowImportPicker: View {
             }
             .padding(Space.sm)
             .background(
-                AppColors.danger.opacity(0.10),
+                AppColors.warning.opacity(0.10),
                 in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
             )
         } else {
@@ -369,6 +369,7 @@ private struct WorkflowImportReport: View {
                                     .appType(.body)
                             } icon: {
                                 Image(systemName: "minus.circle")
+                                    .glyph(Glyph.sm, weight: .semibold)
                                     .foregroundStyle(AppColors.textSecondary)
                             }
                         }
@@ -416,6 +417,10 @@ private struct WorkflowImportReport: View {
 
 /// The frame every one of these sheets uses: a title, one line of explanation,
 /// scrolling content, and a fixed action row that never scrolls away.
+///
+/// Built on `Scaffold` rather than by hand so a sheet's bars sit on the same
+/// surface, at the same height, above the same hairline as the screen it opens
+/// over.
 struct WorkflowSheetShell<Content: View>: View {
     let title: String
     let message: String
@@ -427,38 +432,39 @@ struct WorkflowSheetShell<Content: View>: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: Space.xs) {
+        Scaffold {
+            VStack(alignment: .leading, spacing: Space.hair) {
                 Text(title)
-                    .appType(.sectionTitle)
+                    .appType(.cardTitle)
                     .foregroundStyle(AppColors.textPrimary)
                 Text(message)
-                    .appType(.caption)
+                    .appType(.meta)
                     .foregroundStyle(AppColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Space.lg)
-
-            Divider()
-
+            .padding(.horizontal, Space.lg)
+            .padding(.vertical, Space.sm)
+        } content: {
             content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Divider()
-
+        } bottomBar: {
             HStack(spacing: Space.sm) {
                 Spacer(minLength: 0)
                 if showsCancel {
-                    Button("Cancel", role: .cancel, action: onCancel)
+                    PillButton(title: "Cancel", tint: AppColors.textSecondary, action: onCancel)
                         .keyboardShortcut(.cancelAction)
                 }
-                Button(confirm, action: onConfirm)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!isConfirmEnabled)
-                    .keyboardShortcut(.defaultAction)
+                PillButton(
+                    title: confirm,
+                    tint: AppColors.onBrand,
+                    fill: AppColors.brand,
+                    isOutlined: false,
+                    isEnabled: isConfirmEnabled,
+                    action: onConfirm
+                )
+                .keyboardShortcut(.defaultAction)
             }
-            .padding(Space.lg)
+            .padding(.horizontal, Space.lg)
         }
         .frame(
             minWidth: 460,
@@ -468,7 +474,6 @@ struct WorkflowSheetShell<Content: View>: View {
             idealHeight: 460,
             maxHeight: 700
         )
-        .background(AppColors.background)
     }
 }
 

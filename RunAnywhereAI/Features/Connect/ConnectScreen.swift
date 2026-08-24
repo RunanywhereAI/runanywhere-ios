@@ -15,12 +15,12 @@ struct ConnectScreen: View {
                 header
 
                 if model.isHosting {
-                    section("Connected") { clients }
+                    ScreenSection(title: "Connected") { clients }
                 } else {
-                    section("Model") { picker }
+                    ScreenSection(title: "Model") { picker }
                 }
 
-                section("Activity") { activity }
+                ScreenSection(title: "Activity") { activity }
 
                 Text("The first time you host, macOS asks for permission to find devices on the local network.")
                     .appType(.caption)
@@ -39,14 +39,11 @@ struct ConnectScreen: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             HStack(alignment: .top, spacing: Space.md) {
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .glyph(Glyph.lg)
-                    .foregroundStyle(AppColors.brand)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .fill(AppColors.brandMuted)
-                    )
+                GlyphTile(
+                    symbol: "antenna.radiowaves.left.and.right",
+                    size: Measure.hitTarget,
+                    glyphSize: Glyph.lg
+                )
 
                 VStack(alignment: .leading, spacing: Space.hair) {
                     Text(model.hostName)
@@ -105,18 +102,10 @@ struct ConnectScreen: View {
     }
 
     private var statusBadge: some View {
-        HStack(spacing: Space.xs) {
-            Circle()
-                .fill(model.isHosting ? AppColors.success : AppColors.textTertiary)
-                .frame(width: Space.sm, height: Space.sm)
-            Text(model.status.title)
-                .appType(.chip)
-        }
-        .foregroundStyle(model.isHosting ? AppColors.success : AppColors.textSecondary)
-        .padding(.horizontal, Space.sm)
-        .frame(height: 22)
-        .background(
-            Capsule().fill(model.isHosting ? AppColors.successMuted : AppColors.surfaceMuted)
+        StatusTag(
+            text: model.status.title,
+            tint: model.isHosting ? AppColors.success : AppColors.textSecondary,
+            fill: model.isHosting ? AppColors.successMuted : AppColors.surfaceMuted
         )
     }
 
@@ -137,7 +126,7 @@ struct ConnectScreen: View {
             }
             .foregroundStyle(model.isHosting ? AppColors.danger : AppColors.brand)
             .padding(.horizontal, Space.lg)
-            .frame(height: 36)
+            .frame(height: Measure.hitTarget)
             .background(
                 Capsule().fill(model.isHosting ? AppColors.dangerMuted : AppColors.brandMuted)
             )
@@ -281,19 +270,6 @@ struct ConnectScreen: View {
     }
 
     // MARK: - Chrome
-
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content()
-        }
-    }
 
     private func metric(_ label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: Space.hair) {

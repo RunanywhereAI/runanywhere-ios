@@ -38,14 +38,7 @@ struct BenchmarksScreen: View {
     private var device: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             HStack(spacing: Space.md) {
-                Image(systemName: "cpu")
-                    .glyph(Glyph.md)
-                    .foregroundStyle(AppColors.accent)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .fill(AppColors.accentMuted)
-                    )
+                GlyphTile(symbol: "cpu", tint: AppColors.accent, wash: AppColors.accentMuted)
 
                 VStack(alignment: .leading, spacing: Space.hair) {
                     Text(model.device.model)
@@ -86,7 +79,7 @@ struct BenchmarksScreen: View {
 
     private var plan: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
-            section("What to measure") {
+            ScreenSection(title: "What to measure") {
                 VStack(spacing: Space.sm) {
                     ForEach(BenchmarkCategory.allCases) { category in
                         categoryCard(category)
@@ -94,7 +87,7 @@ struct BenchmarksScreen: View {
                 }
             }
 
-            section("Repeats") {
+            ScreenSection(title: "Repeats") {
                 VStack(alignment: .leading, spacing: Space.sm) {
                     HStack(spacing: Space.xs) {
                         ForEach(model.trialOptions, id: \.self) { count in
@@ -158,17 +151,19 @@ struct BenchmarksScreen: View {
         return VStack(alignment: .leading, spacing: 0) {
             Button {
                 guard !models.isEmpty else { return }
-                withAnimation(.easeInOut(duration: 0.2)) { model.toggle(category, in: store) }
+                withAnimation(Motion.expand) {
+                    model.toggle(category, in: store)
+                }
             } label: {
                 HStack(spacing: Space.md) {
-                    Image(systemName: category.symbol)
-                        .glyph(Glyph.sm)
-                        .foregroundStyle(models.isEmpty ? AppColors.textTertiary : AppColors.brand)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                                .fill(models.isEmpty ? AppColors.surfaceMuted : AppColors.brandMuted)
-                        )
+                    GlyphTile(
+                        symbol: category.symbol,
+                        tint: models.isEmpty ? AppColors.textTertiary : AppColors.brand,
+                        wash: models.isEmpty ? AppColors.surfaceMuted : AppColors.brandMuted,
+                        size: Control.tileSmall,
+                        glyphSize: Glyph.sm,
+                        radius: Radius.sm
+                    )
 
                     VStack(alignment: .leading, spacing: Space.hair) {
                         Text(category.title)
@@ -252,7 +247,7 @@ struct BenchmarksScreen: View {
                 .monospacedDigit()
                 .foregroundStyle(isOn ? AppColors.onBrand : AppColors.textSecondary)
                 .padding(.horizontal, Space.lg)
-                .frame(height: 32)
+                .frame(height: Control.pill)
                 .background(Capsule().fill(isOn ? AppColors.brandSelected : AppColors.surfaceMuted))
                 .contentShape(Capsule())
         }
@@ -279,18 +274,14 @@ struct BenchmarksScreen: View {
 
                 Spacer(minLength: Space.sm)
 
-                Button {
+                PillButton(
+                    title: "Stop",
+                    symbol: "stop.fill",
+                    tint: AppColors.danger,
+                    fill: AppColors.dangerMuted
+                ) {
                     model.cancel()
-                } label: {
-                    Text("Stop")
-                        .appType(.meta)
-                        .foregroundStyle(AppColors.danger)
-                        .padding(.horizontal, Space.md)
-                        .frame(height: 32)
-                        .background(Capsule().fill(AppColors.dangerMuted))
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
             }
 
             ProgressView(value: model.progress?.fraction ?? 0)
@@ -318,10 +309,7 @@ struct BenchmarksScreen: View {
     private var history: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack {
-                Text("History")
-                    .appType(.overline)
-                    .textCase(.uppercase)
-                    .foregroundStyle(AppColors.textSecondary)
+                SectionHeader("History")
 
                 Spacer(minLength: 0)
 
@@ -401,19 +389,6 @@ struct BenchmarksScreen: View {
         parts.append(run.device.chip)
         return parts.joined(separator: " · ")
     }
-
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content()
-        }
-    }
 }
 
 struct BenchmarkStatusChip: View {
@@ -428,11 +403,6 @@ struct BenchmarkStatusChip: View {
     }
 
     var body: some View {
-        Text(status.title)
-            .appType(.chip)
-            .foregroundStyle(tint)
-            .padding(.horizontal, Space.sm)
-            .frame(height: 20)
-            .background(Capsule().fill(tint.opacity(0.12)))
+        StatusTag(text: status.title, tint: tint, showsDot: false)
     }
 }

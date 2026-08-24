@@ -48,7 +48,7 @@ struct WorkflowPackEditorSheet: View {
                     Section {
                         Label(blocker, systemImage: "exclamationmark.triangle.fill")
                             .appType(.caption)
-                            .foregroundStyle(AppColors.danger)
+                            .foregroundStyle(AppColors.warning)
                     }
                 }
             }
@@ -124,14 +124,7 @@ struct WorkflowPackEditorSheet: View {
         LabeledContent("Icon") {
             HStack(spacing: Space.sm) {
                 TextField("SF Symbol name", text: $draft.icon)
-                Image(systemName: resolvedIcon)
-                    .appType(.cardTitle)
-                    .foregroundStyle(draft.accent.color)
-                    .frame(width: 26, height: 26)
-                    .background(
-                        draft.accent.color.opacity(0.14),
-                        in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-                    )
+                WorkflowIconWell(symbol: resolvedIcon, tint: draft.accent.color)
                     .help(resolvedIcon == draft.icon
                         ? draft.icon
                         : "This Mac has no symbol called \(draft.icon); showing the fallback.")
@@ -153,7 +146,9 @@ struct WorkflowPackEditorSheet: View {
                 Label {
                     Text(accent.label)
                 } icon: {
-                    Image(systemName: "circle.fill").foregroundStyle(accent.color)
+                    Image(systemName: "circle.fill")
+                        .glyph(Glyph.xs, weight: .semibold)
+                        .foregroundStyle(accent.color)
                 }
                 .tag(accent)
             }
@@ -174,15 +169,10 @@ struct WorkflowPackEditorSheet: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 110)
-                        Button {
+                        .frame(width: InspectorWidth.keyColumn)
+                        WorkflowRemoveButton(help: "Remove this input") {
                             draft.inputs.removeAll { $0.id == input.id }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundStyle(AppColors.textSecondary)
                         }
-                        .buttonStyle(.plain)
-                        .help("Remove this input")
                     }
                     TextField("What it is for", text: $input.summary)
                     Toggle("Required", isOn: $input.required)
@@ -210,14 +200,9 @@ struct WorkflowPackEditorSheet: View {
             ForEach($draft.outputs) { $output in
                 HStack(spacing: Space.sm) {
                     TextField("Name", text: $output.name)
-                    Button {
+                    WorkflowRemoveButton(help: "Remove this output") {
                         draft.outputs.removeAll { $0.id == output.id }
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(AppColors.textSecondary)
                     }
-                    .buttonStyle(.plain)
-                    .help("Remove this output")
                 }
             }
 
@@ -270,15 +255,7 @@ struct WorkflowPackEditorSheet: View {
 
     private var scriptSection: some View {
         Section {
-            TextEditor(text: $draft.script)
-                .font(AppType.font(.mono))
-                .scrollContentBackground(.hidden)
-                .padding(Space.xs)
-                .frame(minHeight: 160)
-                .background(
-                    AppColors.surfaceMuted,
-                    in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-                )
+            WorkflowCodeEditor(text: $draft.script, minHeight: EditorHeight.code)
         } header: {
             Text("JavaScript")
         } footer: {

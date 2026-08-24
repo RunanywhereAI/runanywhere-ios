@@ -28,14 +28,7 @@ struct ComputerUseModelCard: View {
 
     private func driving(_ name: String) -> some View {
         HStack(spacing: Space.md) {
-            Image(systemName: "cursorarrow.rays")
-                .glyph(Glyph.md)
-                .foregroundStyle(AppColors.brand)
-                .frame(width: 36, height: 36)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(AppColors.brandMuted)
-                )
+            GlyphTile(symbol: "cursorarrow.rays")
 
             VStack(alignment: .leading, spacing: Space.hair) {
                 Text(name)
@@ -121,42 +114,25 @@ struct ComputerUseModelCard: View {
             }
             .frame(width: 130)
         } else if agent.localPath.isEmpty {
-            pill("Get", symbol: "arrow.down", tint: AppColors.brand, wash: AppColors.brandMuted) {
+            PillButton(
+                title: "Get",
+                symbol: "arrow.down",
+                tint: AppColors.brand,
+                fill: AppColors.brandMuted,
+                isEnabled: !model.isLoadingModel
+            ) {
                 Task { await store.download(agent.id) }
             }
         } else {
-            pill(
-                model.isLoadingModel ? "Loading…" : "Use",
+            PillButton(
+                title: model.isLoadingModel ? "Loading…" : "Use",
                 symbol: "play.fill",
                 tint: AppColors.brand,
-                wash: AppColors.brandMuted
+                fill: AppColors.brandMuted,
+                isEnabled: !model.isLoadingModel
             ) {
                 Task { await model.load(agent, store: store) }
             }
         }
-    }
-
-    private func pill(
-        _ title: String,
-        symbol: String,
-        tint: Color,
-        wash: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: Space.xs) {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-                Text(title)
-                    .appType(.meta)
-            }
-            .foregroundStyle(tint)
-            .padding(.horizontal, Space.md)
-            .frame(height: 30)
-            .background(Capsule().fill(wash))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isLoadingModel)
     }
 }

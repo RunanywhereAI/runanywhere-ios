@@ -54,15 +54,7 @@ struct WorkflowInspectorPane: View {
                                 onReveal(nodeID)
                             }
                         } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(AppColors.danger)
-                                Text(issue.message)
-                                    .foregroundStyle(AppColors.textPrimary)
-                                    .multilineTextAlignment(.leading)
-                            }
-                            .appType(.caption)
-                            .contentShape(Rectangle())
+                            WorkflowIssueRow(message: issue.message)
                         }
                         .buttonStyle(.plain)
                         .disabled(issue.nodeID == nil)
@@ -100,7 +92,7 @@ struct WorkflowInspectorPane: View {
                     LabeledContent("Into", value: edge.toPort)
 
                     Button("Remove Connection", role: .destructive) {
-                        withAnimation(.easeOut(duration: 0.2)) { viewModel.deleteEdge(edgeID) }
+                        withAnimation(Motion.quick) { viewModel.deleteEdge(edgeID) }
                     }
                 }
             }
@@ -123,10 +115,10 @@ struct WorkflowInspectorPane: View {
             Section {
                 LabeledContent("Selected", value: "\(viewModel.selectedNodeIDs.count) nodes")
                 Button("Duplicate") {
-                    withAnimation(.easeOut(duration: 0.2)) { viewModel.duplicateSelection() }
+                    withAnimation(Motion.quick) { viewModel.duplicateSelection() }
                 }
                 Button("Delete", role: .destructive) {
-                    withAnimation(.easeOut(duration: 0.2)) { viewModel.deleteSelection() }
+                    withAnimation(Motion.quick) { viewModel.deleteSelection() }
                 }
             }
         }
@@ -161,6 +153,16 @@ struct WorkflowNodeInspector: View {
                 outputSection
             }
             .formStyle(.grouped)
+        } else {
+            // Reachable: this view is pinned with `.id(node.id)`, and an undo
+            // restores a snapshot before the selection is pruned against it.
+            EmptyState(
+                symbol: "square.dashed",
+                title: "That node is gone",
+                detail: "It was deleted or undone away. Pick another node on the canvas."
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppColors.background)
         }
     }
 
@@ -217,14 +219,7 @@ struct WorkflowNodeInspector: View {
         let presentation = viewModel.presentation(of: node)
         return Section {
             HStack(spacing: Space.sm) {
-                Image(systemName: presentation.systemImage)
-                    .appType(.caption)
-                    .foregroundStyle(presentation.accent)
-                    .frame(width: Space.xl + Space.hair, height: Space.xl + Space.hair)
-                    .background(
-                        presentation.accent.opacity(0.14),
-                        in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-                    )
+                WorkflowIconWell(symbol: presentation.systemImage, tint: presentation.accent)
                 VStack(alignment: .leading, spacing: Space.hair) {
                     TextField("Name", text: nameBinding)
                         .textFieldStyle(.plain)
@@ -275,7 +270,8 @@ struct WorkflowNodeInspector: View {
                         Text(issue.message).appType(.caption)
                     } icon: {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(AppColors.danger)
+                            .glyph(Glyph.sm, weight: .semibold)
+                            .foregroundStyle(AppColors.warning)
                     }
                 }
             }
@@ -301,15 +297,7 @@ struct WorkflowNodeInspector: View {
     func codeEditor(
         _ text: Binding<String>, minHeight: CGFloat, monospaced: Bool = true
     ) -> some View {
-        TextEditor(text: text)
-            .font(AppType.font(monospaced ? .mono : .body))
-            .scrollContentBackground(.hidden)
-            .padding(Space.xs)
-            .frame(minHeight: minHeight)
-            .background(
-                AppColors.surfaceMuted,
-                in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-            )
+        WorkflowCodeEditor(text: text, minHeight: minHeight, monospaced: monospaced)
     }
 
     func footnote(_ text: String) -> some View {
@@ -388,7 +376,7 @@ struct WorkflowNodeInspector: View {
                         ), in: 0...2)
                         Text(temperature.formatted(.number.precision(.fractionLength(2))))
                             .appType(.monoMetric)
-                            .frame(width: 44, alignment: .trailing)
+                            .frame(width: InspectorWidth.readout, alignment: .trailing)
                     }
                 }
             }
@@ -425,16 +413,11 @@ struct WorkflowNodeInspector: View {
         ForEach(rows) { $row in
             HStack(spacing: Space.sm) {
                 TextField(keyTitle, text: $row.key)
-                    .frame(maxWidth: 110)
+                    .frame(maxWidth: InspectorWidth.keyColumn)
                 TextField(valueTitle, text: $row.value)
-                Button {
+                WorkflowRemoveButton(help: "Remove") {
                     rows.wrappedValue.removeAll { $0.id == row.id }
-                } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundStyle(AppColors.textSecondary)
                 }
-                .buttonStyle(.plain)
-                .help("Remove")
             }
         }
 

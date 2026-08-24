@@ -8,9 +8,8 @@
 //
 //  Scope, stated plainly: this fires while the app is running. There is no
 //  background execution and no persistence of fire times across launches — a
-//  schedule's clock restarts when the app does. Cron is stored and round-trips
-//  through the document, but nothing here parses it, so a cron trigger is
-//  listed as unscheduled rather than silently ignored.
+//  schedule's clock restarts when the app does. Cron expressions are read by
+//  commons, which owns the parser so every SDK resolves one the same way.
 //
 //  Owned as a single app-level instance rather than by the canvas: closing the
 //  workflow editor must not stop the schedules the user set up in it.
@@ -201,8 +200,10 @@ final class WorkflowScheduler {
         }
     }
 
-    /// Cron returns nil: this host has no cron parser, and guessing a fire time
-    /// for an expression it cannot read would be worse than saying so.
+    /// Cron ignores `reference`: an expression names wall-clock instants, so
+    /// its next firing depends on `now` alone. Nil means it never comes round,
+    /// such as 30 February; a stored expression always parses, because saving
+    /// the document validates it.
     static func nextFireDate(
         for config: RAScheduleTriggerConfig,
         after reference: Date,
@@ -210,7 +211,9 @@ final class WorkflowScheduler {
     ) -> Date? {
         switch config.kind {
         case .cron:
-            return nil
+            return try? RunAnywhere.workflows.nextCronFireDate(
+                expression: config.cron, after: now
+            )
         case .daily:
             var components = DateComponents()
             components.hour = Int(min(23, config.hour))

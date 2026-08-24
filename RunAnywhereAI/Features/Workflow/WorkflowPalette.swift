@@ -135,21 +135,18 @@ struct WorkflowPalette: View {
     }
 
     private func rowIcon(_ symbol: String, tint: Color) -> some View {
-        Image(systemName: symbol)
-            .appType(.caption)
-            .foregroundStyle(tint)
-            .frame(width: Space.xl + Space.hair, height: Space.xl + Space.hair)
-            .background(
-                tint.opacity(0.14),
-                in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-            )
+        WorkflowIconWell(symbol: symbol, tint: tint)
     }
 
     // MARK: - Pack library
 
     @ViewBuilder private var packLibrarySection: some View {
         Section("Node Packs") {
-            if packStore.installedPacks.isEmpty {
+            if let failure = packStore.listError {
+                unreadableRow("Couldn't read installed packs", detail: failure) {
+                    Task { await packStore.refresh() }
+                }
+            } else if packStore.installedPacks.isEmpty {
                 Text("No packs installed")
                     .appType(.caption)
                     .foregroundStyle(AppColors.textSecondary)
@@ -186,7 +183,7 @@ struct WorkflowPalette: View {
                 Task { await viewModel.deletePack(pack) }
             } label: {
                 Image(systemName: "trash")
-                    .appType(.caption)
+                    .glyph(Glyph.xs, weight: .semibold)
                     .foregroundStyle(AppColors.textSecondary)
             }
             .buttonStyle(.plain)
@@ -242,14 +239,14 @@ struct WorkflowPalette: View {
 
     private func nextFireText(_ entry: WorkflowScheduler.Entry) -> String {
         guard entry.isEnabled else { return "Paused" }
-        guard let next = entry.nextFireDate else { return "Not scheduled by this host" }
-        return "Next " + next.formatted(date: .omitted, time: .shortened)
+        guard let next = entry.nextFireDate else { return "Never fires" }
+        return "Next " + WorkflowScheduleFormat.nextFire(next)
     }
 
     private func nextFireColor(_ entry: WorkflowScheduler.Entry) -> Color {
         guard entry.isEnabled else { return AppColors.textSecondary }
-        // Unscheduled means this host does not parse cron, not that anything
-        // is broken.
+        // No next fire means a cron expression that never comes round, such as
+        // 30 February — worth flagging, but nothing is broken.
         return entry.isScheduled ? AppColors.success : AppColors.warning
     }
 
@@ -257,7 +254,11 @@ struct WorkflowPalette: View {
 
     @ViewBuilder private var librarySection: some View {
         Section("Library") {
-            if viewModel.savedWorkflows.isEmpty {
+            if let failure = viewModel.libraryError {
+                unreadableRow("Couldn't read the workflow library", detail: failure) {
+                    Task { await viewModel.refreshLibrary() }
+                }
+            } else if viewModel.savedWorkflows.isEmpty {
                 Text("No saved workflows")
                     .appType(.caption)
                     .foregroundStyle(AppColors.textSecondary)
@@ -300,6 +301,34 @@ struct WorkflowPalette: View {
                 Task { await viewModel.delete(id: summary.id) }
             }
         }
+    }
+
+    /// A listing that threw, said as what it is, with the one thing worth
+    /// offering: try again.
+    private func unreadableRow(
+        _ title: String,
+        detail: String,
+        retry: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            HStack(spacing: Space.xs) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .glyph(Glyph.xs, weight: .semibold)
+                    .foregroundStyle(AppColors.danger)
+                Text(title)
+                    .appType(.caption)
+                    .foregroundStyle(AppColors.textPrimary)
+            }
+            Text(detail)
+                .appType(.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Try again", action: retry)
+                .buttonStyle(.plain)
+                .appType(.caption)
+                .foregroundStyle(AppColors.brand)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func libraryMeta(_ summary: RAWorkflowSummary) -> String {

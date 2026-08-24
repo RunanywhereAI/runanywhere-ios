@@ -47,7 +47,7 @@ struct WorkflowScreen: View {
         .onAppear { viewModel.undoManager = undoManager }
         .onChange(of: undoManager) { _, manager in viewModel.undoManager = manager }
         .alert(
-            "Workflow",
+            "This workflow couldn't be saved, loaded or run",
             isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
@@ -56,7 +56,7 @@ struct WorkflowScreen: View {
             message: { Text(viewModel.errorMessage ?? "") }
         )
         .alert(
-            "Node Packs",
+            "That node pack couldn't be read or written",
             isPresented: Binding(
                 get: { viewModel.packStore.errorMessage != nil },
                 set: { if !$0 { viewModel.packStore.errorMessage = nil } }
@@ -108,7 +108,7 @@ struct WorkflowScreen: View {
                     x: position.x - WorkflowCanvasMetrics.defaultCardSize.width / 2,
                     y: position.y - WorkflowCanvasMetrics.defaultCardSize.height / 2
                 )
-                let added = withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
+                let added = withAnimation(Motion.expand) {
                     place(item, at: centered)
                 }
                 if added != nil { placed = true }
@@ -225,7 +225,7 @@ struct WorkflowScreen: View {
 
     private func fitToContent() {
         guard let bounds = viewModel.graph.boundingRect(), viewportSize != .zero else {
-            withAnimation(.easeInOut(duration: 0.25)) { camera = WorkflowCanvasCamera() }
+            withAnimation(Motion.fade) { camera = WorkflowCanvasCamera() }
             return
         }
         let padded = bounds.insetBy(dx: -64, dy: -64)
@@ -236,7 +236,7 @@ struct WorkflowScreen: View {
             ),
             1.25
         )
-        withAnimation(.easeInOut(duration: 0.25)) {
+        withAnimation(Motion.fade) {
             camera.zoom = zoom
             camera.pan = CGSize(
                 width: viewportCenter.x - padded.midX * zoom,
@@ -248,7 +248,7 @@ struct WorkflowScreen: View {
     private func center(on nodeID: String) {
         guard let node = viewModel.graph.node(nodeID) else { return }
         let frame = WorkflowCanvasMetrics.cardFrame(of: node)
-        withAnimation(.easeInOut(duration: 0.25)) {
+        withAnimation(Motion.fade) {
             camera.pan = CGSize(
                 width: viewportCenter.x - frame.midX * camera.zoom,
                 height: viewportCenter.y - frame.midY * camera.zoom
@@ -263,7 +263,7 @@ struct WorkflowScreen: View {
             x: center.x - WorkflowCanvasMetrics.defaultCardSize.width / 2 + cascade,
             y: center.y - WorkflowCanvasMetrics.defaultCardSize.height / 2 + cascade
         )
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) {
+        withAnimation(Motion.expand) {
             _ = place(item, at: position)
         }
     }

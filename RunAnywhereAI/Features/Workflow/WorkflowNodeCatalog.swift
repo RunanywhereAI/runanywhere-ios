@@ -27,6 +27,9 @@ enum WorkflowNodeCategory: String, CaseIterable, Identifiable {
     /// weights, so the three quietest groups are told apart by weight rather
     /// than by colour. `danger` is left out entirely: on this screen it means a
     /// node failed, and a category that borrowed it would read as an error.
+    /// `accent` is left out too — it resolves to `brand` in user mode and to
+    /// `info` in developer mode, so either way it collides with a group already
+    /// spoken for.
     var accent: Color {
         switch self {
         case .trigger: AppColors.success
@@ -67,7 +70,7 @@ struct WorkflowOutputPort: RawRepresentable, Identifiable, Hashable {
     var tint: Color {
         switch self {
         case .truthy: AppColors.success
-        case .falsy: AppColors.danger
+        case .falsy: AppColors.info
         default: AppColors.brand
         }
     }

@@ -8,11 +8,11 @@ struct StorageScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                section("On this device") { summary }
+                ScreenSection(title: "On this device") { summary }
 
-                section("Downloaded models") { downloaded }
+                ScreenSection(title: "Downloaded models") { downloaded }
 
-                section("Reclaim space") { maintenance }
+                ScreenSection(title: "Reclaim space") { maintenance }
 
                 if let error = model.lastError {
                     Text(error)
@@ -118,7 +118,7 @@ struct StorageScreen: View {
                 Image(systemName: "trash")
                     .glyph(Glyph.sm, weight: .semibold)
                     .foregroundStyle(AppColors.danger)
-                    .frame(width: 32, height: 32)
+                    .frame(width: Control.pill, height: Control.pill)
                     .background(Circle().fill(AppColors.dangerMuted))
                     .contentShape(Circle())
             }
@@ -166,6 +166,9 @@ struct StorageScreen: View {
         .card()
     }
 
+    /// Neutral, not red: the copy above says these are safe to remove, and the
+    /// only genuinely destructive control on this screen is the trash button on
+    /// a model row.
     private func actionPill(
         title: String,
         busyTitle: String,
@@ -173,37 +176,16 @@ struct StorageScreen: View {
         isRunning: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(spacing: Space.xs) {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-                Text(isRunning ? busyTitle : title)
-                    .appType(.meta)
-            }
-            .foregroundStyle(AppColors.danger)
-            .padding(.horizontal, Space.md)
-            .frame(height: 32)
-            .background(Capsule().fill(AppColors.dangerMuted))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isBusy)
+        PillButton(
+            title: isRunning ? busyTitle : title,
+            symbol: symbol,
+            tint: AppColors.textSecondary,
+            isEnabled: !model.isBusy,
+            action: action
+        )
     }
 
     // MARK: - Chrome
-
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content()
-        }
-    }
 
     private func metric(_ label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: Space.hair) {

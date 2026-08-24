@@ -11,8 +11,8 @@ struct DiarizationScreen: View {
                 DiarizationModelCard(store: store, model: model)
 
                 if model.hasModel {
-                    section("Recording") { recorder }
-                    section("Speakers") { transcript }
+                    ScreenSection(title: "Recording") { recorder }
+                    ScreenSection(title: "Speakers") { transcript }
                 }
 
                 if let error = model.lastError {
@@ -47,7 +47,7 @@ struct DiarizationScreen: View {
 
                 if model.isRecording {
                     Button {
-                        withAnimation(.easeOut(duration: 0.2)) { model.discard() }
+                        withAnimation(Motion.quick) { model.discard() }
                     } label: {
                         Text("Discard")
                             .appType(.meta)
@@ -203,19 +203,6 @@ struct DiarizationScreen: View {
     }
 
     // MARK: - Chrome
-
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content()
-        }
-    }
 
     private static func clock(_ elapsed: TimeInterval) -> String {
         String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60)

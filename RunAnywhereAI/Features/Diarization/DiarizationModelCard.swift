@@ -28,14 +28,7 @@ struct DiarizationModelCard: View {
 
     private func loaded(_ name: String) -> some View {
         HStack(spacing: Space.md) {
-            Image(systemName: "person.2.wave.2")
-                .glyph(Glyph.md)
-                .foregroundStyle(AppColors.brand)
-                .frame(width: 36, height: 36)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(AppColors.brandMuted)
-                )
+            GlyphTile(symbol: "person.2.wave.2")
 
             Text(name)
                 .appType(.cardTitle)
@@ -93,32 +86,26 @@ struct DiarizationModelCard: View {
             }
             .frame(width: 130)
         } else if candidate.localPath.isEmpty {
-            pill("Get", symbol: "arrow.down") {
+            PillButton(
+                title: "Get",
+                symbol: "arrow.down",
+                tint: AppColors.brand,
+                fill: AppColors.brandMuted,
+                isEnabled: !model.isLoadingModel
+            ) {
                 Task { await store.download(candidate.id) }
             }
         } else {
-            pill(model.isLoadingModel ? "Loading…" : "Use", symbol: "play.fill") {
+            PillButton(
+                title: model.isLoadingModel ? "Loading…" : "Use",
+                symbol: "play.fill",
+                tint: AppColors.brand,
+                fill: AppColors.brandMuted,
+                isEnabled: !model.isLoadingModel
+            ) {
                 Task { await model.load(candidate, store: store) }
             }
         }
-    }
-
-    private func pill(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Space.xs) {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-                Text(title)
-                    .appType(.meta)
-            }
-            .foregroundStyle(AppColors.brand)
-            .padding(.horizontal, Space.md)
-            .frame(height: 30)
-            .background(Capsule().fill(AppColors.brandMuted))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isLoadingModel)
     }
 }
 #endif

@@ -164,12 +164,7 @@ struct SegmentationScreen: View {
     // MARK: - Breakdown
 
     private var breakdown: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Classes")
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-
+        ScreenSection(title: "Classes") {
             VStack(spacing: 0) {
                 ForEach(viewModel.classes, id: \.classId) { summary in
                     row(summary)
@@ -248,49 +243,6 @@ struct SegmentationScreen: View {
                 viewModel.notice = error.localizedDescription
             }
         }
-    }
-}
-
-private struct PillLabel: View {
-    let title: String
-    var symbol: String?
-    var tint: Color = AppColors.textPrimary
-    var fill: Color = AppColors.surfaceMuted
-
-    var body: some View {
-        HStack(spacing: Space.xs) {
-            if let symbol {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-            }
-            Text(title)
-                .appType(.meta)
-                .fontWeight(.semibold)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, Space.md)
-        .frame(height: 32)
-        .background(Capsule().fill(fill))
-        .overlay(Capsule().strokeBorder(AppColors.border, lineWidth: Stroke.hairline))
-        .contentShape(Capsule())
-    }
-}
-
-private struct PillButton: View {
-    let title: String
-    var symbol: String?
-    var tint: Color = AppColors.textPrimary
-    var fill: Color = AppColors.surfaceMuted
-    var isEnabled = true
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            PillLabel(title: title, symbol: symbol, tint: tint, fill: fill)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.4)
     }
 }
 #endif

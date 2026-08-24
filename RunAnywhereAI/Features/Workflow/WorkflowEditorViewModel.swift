@@ -40,6 +40,9 @@ final class WorkflowEditorViewModel {
     var issues: [WorkflowIssue] { localIssues + remoteIssues }
 
     private(set) var savedWorkflows: [RAWorkflowSummary] = []
+    /// Set when the last listing threw. An empty library and an unreadable one
+    /// are different facts, and only one of them is the user's doing.
+    private(set) var libraryError: String?
     private(set) var availableModels: [ModelInfo] = []
     private(set) var availableTools: [ToolDefinition] = []
 
@@ -362,11 +365,17 @@ final class WorkflowEditorViewModel {
         }
     }
 
-    /// A failed listing leaves the library section empty rather than raising
-    /// an alert — it also runs at first appearance, before anything is stored.
+    /// A failed listing reports itself in the sidebar rather than raising an
+    /// alert — it also runs at first appearance, before anything is stored, and
+    /// a modal over an empty editor helps nobody. What it must not do is leave
+    /// the section reading "No saved workflows" when the workflows are on disk
+    /// and unreadable.
     func refreshLibrary() async {
-        if let workflows = try? await RunAnywhere.workflows.list() {
-            savedWorkflows = workflows
+        do {
+            savedWorkflows = try await RunAnywhere.workflows.list()
+            libraryError = nil
+        } catch {
+            libraryError = error.localizedDescription
         }
     }
 

@@ -52,18 +52,9 @@ struct TalkScreen: View {
                 .frame(maxWidth: 320)
 
             if model.phase.isLive {
-                Button {
+                PillButton(title: "End conversation", tint: AppColors.textSecondary) {
                     Task { await model.stop() }
-                } label: {
-                    Text("End conversation")
-                        .appType(.meta)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .padding(.horizontal, Space.lg)
-                        .frame(height: 32)
-                        .background(Capsule().fill(AppColors.surfaceMuted))
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.vertical, Space.xl)
@@ -78,7 +69,7 @@ struct TalkScreen: View {
                     .fill(statusTint.opacity(0.14))
                     .frame(width: VoiceMetrics.halo, height: VoiceMetrics.halo)
                     .scaleEffect(model.isSpeechDetected ? 1.08 : 1)
-                    .animation(.easeOut(duration: 0.25), value: model.isSpeechDetected)
+                    .animation(Motion.quick, value: model.isSpeechDetected)
 
                 Circle()
                     .strokeBorder(statusTint.opacity(0.4), lineWidth: Stroke.heavy)
@@ -187,7 +178,7 @@ struct TalkScreen: View {
     }
 
     private var conversation: some View {
-        VoiceSection(title: "This turn") {
+        ScreenSection(title: "This turn") {
             VStack(alignment: .leading, spacing: Space.md) {
                 if !model.transcript.isEmpty {
                     turn(
@@ -249,7 +240,7 @@ struct TalkScreen: View {
     // MARK: - Pipeline
 
     private var pipeline: some View {
-        VoiceSection(title: "Pipeline") {
+        ScreenSection(title: "Pipeline") {
             VStack(spacing: Space.sm) {
                 ForEach([model.stt, model.llm, model.tts], id: \.slot) { slot in
                     VoiceModelRow(slot: slot, isEnabled: !model.phase.isLive) {

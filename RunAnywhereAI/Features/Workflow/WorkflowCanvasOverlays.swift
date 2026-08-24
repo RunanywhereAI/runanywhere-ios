@@ -36,7 +36,7 @@ struct WorkflowCanvasOverlays: ViewModifier {
     private var zoomControls: some View {
         HStack(spacing: Space.hair) {
             zoomButton("minus", "Zoom out (⌘−)") {
-                withAnimation(.easeOut(duration: 0.18)) {
+                withAnimation(Motion.quick) {
                     camera.magnify(by: 1 / 1.2, about: viewportCenter)
                 }
             }
@@ -45,10 +45,11 @@ struct WorkflowCanvasOverlays: ViewModifier {
             Text(Double(camera.zoom).formatted(.percent.precision(.fractionLength(0))))
                 .appType(.monoMetric)
                 .foregroundStyle(AppColors.textPrimary)
-                .frame(width: 48)
+                .contentTransition(.numericText())
+                .frame(width: Measure.hitTarget + Space.xs)
 
             zoomButton("plus", "Zoom in (⌘+)") {
-                withAnimation(.easeOut(duration: 0.18)) {
+                withAnimation(Motion.quick) {
                     camera.magnify(by: 1.2, about: viewportCenter)
                 }
             }
@@ -62,7 +63,7 @@ struct WorkflowCanvasOverlays: ViewModifier {
             .keyboardShortcut("0", modifiers: [.command, .shift])
 
             zoomButton("1.circle", "Actual size (⌘0)") {
-                withAnimation(.easeInOut(duration: 0.25)) {
+                withAnimation(Motion.fade) {
                     camera.magnify(by: 1 / camera.zoom, about: viewportCenter)
                 }
             }
@@ -79,7 +80,7 @@ struct WorkflowCanvasOverlays: ViewModifier {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .appType(.caption)
+                .glyph(Glyph.xs, weight: .semibold)
                 .foregroundStyle(AppColors.textSecondary)
                 .frame(width: Space.xl, height: Space.lg + Space.xs)
                 .contentShape(Rectangle())
@@ -96,8 +97,8 @@ struct WorkflowCanvasOverlays: ViewModifier {
             runChip
         }
         .padding(.top, Space.md)
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: viewModel.issues)
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: viewModel.runPhase)
+        .animation(Motion.expand, value: viewModel.issues)
+        .animation(Motion.expand, value: viewModel.runPhase)
     }
 
     private var issuesChip: some View {
@@ -109,7 +110,7 @@ struct WorkflowCanvasOverlays: ViewModifier {
                 systemImage: "exclamationmark.triangle.fill"
             )
             .appType(.chip)
-            .foregroundStyle(AppColors.danger)
+            .foregroundStyle(AppColors.warning)
             .padding(.horizontal, Space.md)
             .padding(.vertical, Space.xs)
             .contentShape(Capsule())
@@ -132,15 +133,7 @@ struct WorkflowCanvasOverlays: ViewModifier {
                         onReveal(nodeID)
                     }
                 } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(AppColors.danger)
-                        Text(issue.message)
-                            .foregroundStyle(AppColors.textPrimary)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .appType(.caption)
-                    .contentShape(Rectangle())
+                    WorkflowIssueRow(message: issue.message)
                 }
                 .buttonStyle(.plain)
                 .disabled(issue.nodeID == nil)
@@ -159,9 +152,9 @@ struct WorkflowCanvasOverlays: ViewModifier {
                 Circle()
                     .fill(AppColors.brand)
                     .frame(width: Space.sm, height: Space.sm)
-                    .phaseAnimator([0.3, 1.0]) { view, opacity in
+                    .phaseAnimator([Motion.pulseFloor, 1.0]) { view, opacity in
                         view.opacity(opacity)
-                    } animation: { _ in .easeInOut(duration: 0.6) }
+                    } animation: { _ in Motion.pulse }
                 Text("Running…")
                     .appType(.chip)
                     .foregroundStyle(AppColors.textPrimary)

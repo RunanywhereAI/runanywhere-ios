@@ -76,8 +76,11 @@ struct WorkflowNodeCard: View {
         .overlay(alignment: .topTrailing) { issueBadge }
         .shadow(radius: isSelected || isHovered ? Space.md : Space.xs, y: Space.hair)
         .scaleEffect(isSnapTarget ? 1.03 : 1)
-        .animation(.spring(response: 0.24, dampingFraction: 0.75), value: isSnapTarget)
-        .animation(.easeInOut(duration: 0.12), value: isSelected)
+        .animation(Motion.expand, value: isSnapTarget)
+        .animation(Motion.fade, value: isSelected)
+        .animation(Motion.fade, value: isHovered)
+        .animation(Motion.fade, value: isDraftCandidate)
+        .animation(Motion.fade, value: presentation.isMissing)
         .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         .onHover { isHovered = $0 }
         .gesture(selectTap)
@@ -86,28 +89,25 @@ struct WorkflowNodeCard: View {
             if !node.kind.isTrigger {
                 Button("Duplicate") {
                     viewModel.select(node.id, additive: false)
-                    withAnimation(.easeOut(duration: 0.2)) { viewModel.duplicateSelection() }
+                    withAnimation(Motion.quick) { viewModel.duplicateSelection() }
                 }
                 Divider()
             }
             Button("Delete", role: .destructive) {
                 viewModel.select(node.id, additive: false)
-                withAnimation(.easeOut(duration: 0.2)) { viewModel.deleteSelection() }
+                withAnimation(Motion.quick) { viewModel.deleteSelection() }
             }
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: status)
+        .animation(Motion.expand, value: status)
     }
 
     private var header: some View {
         HStack(spacing: Space.sm) {
-            Image(systemName: presentation.systemImage)
-                .appType(.chip)
-                .foregroundStyle(presentation.accent)
-                .frame(width: Glyph.lg, height: Glyph.lg)
-                .background(
-                    presentation.accent.opacity(0.16),
-                    in: RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
-                )
+            WorkflowIconWell(
+                symbol: presentation.systemImage,
+                tint: presentation.accent,
+                size: Glyph.lg
+            )
 
             Text(presentation.title.uppercased())
                 .appType(.overline)
@@ -140,7 +140,7 @@ struct WorkflowNodeCard: View {
             if presentation.isMissing {
                 Label("Install the pack to run this node", systemImage: "shippingbox.badge.clock")
                     .appType(.chip)
-                    .foregroundStyle(AppColors.danger)
+                    .foregroundStyle(AppColors.warning)
                     .lineLimit(1)
             }
         }
@@ -208,7 +208,7 @@ struct WorkflowNodeCard: View {
 
     private func badge(_ symbol: String, _ tint: Color, _ help: String) -> some View {
         Image(systemName: symbol)
-            .appType(.chip)
+            .glyph(Glyph.xs, weight: .semibold)
             .foregroundStyle(tint)
             .help(help)
     }
@@ -233,22 +233,22 @@ struct WorkflowNodeCard: View {
             Circle()
                 .fill(AppColors.brand)
                 .frame(width: Space.sm, height: Space.sm)
-                .phaseAnimator([0.35, 1.0]) { view, opacity in
+                .phaseAnimator([Motion.pulseFloor, 1.0]) { view, opacity in
                     view.opacity(opacity)
-                } animation: { _ in .easeInOut(duration: 0.6) }
+                } animation: { _ in Motion.pulse }
         case .succeeded:
             Image(systemName: "checkmark.circle.fill")
-                .appType(.chip)
+                .glyph(Glyph.xs, weight: .semibold)
                 .foregroundStyle(AppColors.success)
                 .transition(.scale.combined(with: .opacity))
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill")
-                .appType(.chip)
+                .glyph(Glyph.xs, weight: .semibold)
                 .foregroundStyle(AppColors.danger)
                 .transition(.scale.combined(with: .opacity))
         case .skipped:
             Image(systemName: "minus.circle")
-                .appType(.chip)
+                .glyph(Glyph.xs, weight: .semibold)
                 .foregroundStyle(AppColors.textTertiary)
         }
     }
@@ -257,29 +257,32 @@ struct WorkflowNodeCard: View {
         if status == .running {
             RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
                 .strokeBorder(AppColors.brand, lineWidth: Stroke.heavy)
-                .phaseAnimator([0.25, 0.9]) { view, opacity in
+                .phaseAnimator([Motion.pulseFloor, 1.0]) { view, opacity in
                     view.opacity(opacity)
-                } animation: { _ in .easeInOut(duration: 0.6) }
+                } animation: { _ in Motion.pulse }
         }
     }
 
     @ViewBuilder private var issueBadge: some View {
         if !nodeIssues.isEmpty, status == .idle {
             Image(systemName: "exclamationmark.triangle.fill")
-                .appType(.chip)
-                .foregroundStyle(AppColors.danger)
+                .glyph(Glyph.xs, weight: .semibold)
+                .foregroundStyle(AppColors.warning)
                 .padding(Space.xs)
                 .help(nodeIssues.map(\.message).joined(separator: "\n"))
         }
     }
 
+    /// A valid drop target is drawn in `accent`, not `success`: green on this
+    /// canvas means a node finished, and a rope hovering over a socket has not
+    /// finished anything.
     private var outlineColor: Color {
-        if isSnapTarget { return AppColors.success }
+        if isSnapTarget { return AppColors.accent }
         if isSelected { return AppColors.brand }
         if presentation.isMissing { return AppColors.warning }
         switch status {
         case .idle:
-            return isDraftCandidate ? AppColors.success.opacity(0.55) : AppColors.border
+            return isDraftCandidate ? AppColors.accent.opacity(0.55) : AppColors.border
         case .running: return AppColors.brand.opacity(0.7)
         case .succeeded: return AppColors.success.opacity(0.7)
         case .failed: return AppColors.danger.opacity(0.8)
@@ -365,6 +368,10 @@ struct WorkflowNodeCard: View {
     /// truncates instead of running back across the summary text.
     private static let captionWidth: CGFloat = 44
 
+    /// How much a socket grows while it is the live end of a drag. Both ends of
+    /// a rope wear the same affordance, so they grow by the same amount.
+    private static let activeSocketGrowth: CGFloat = 4
+
     private func portCaption(_ label: String, tint: Color) -> some View {
         Text(label)
             .appType(.chip)
@@ -386,20 +393,20 @@ struct WorkflowNodeCard: View {
         let ring = port.isRequired && !connected ? AppColors.warning : AppColors.border
 
         return Circle()
-            .fill(isTarget ? AppColors.success : connected ? AppColors.brand : AppColors.surface)
+            .fill(isTarget ? AppColors.accent : connected ? AppColors.brand : AppColors.surface)
             .overlay(
                 Circle().strokeBorder(
                     isTarget
-                        ? AppColors.success
-                        : isCandidate ? AppColors.success.opacity(0.8) : ring,
+                        ? AppColors.accent
+                        : isCandidate ? AppColors.accent.opacity(0.8) : ring,
                     lineWidth: Stroke.heavy
                 )
             )
             .frame(
-                width: isTarget ? diameter + 5 : diameter,
-                height: isTarget ? diameter + 5 : diameter
+                width: isTarget ? diameter + Self.activeSocketGrowth : diameter,
+                height: isTarget ? diameter + Self.activeSocketGrowth : diameter
             )
-            .animation(.spring(response: 0.24, dampingFraction: 0.75), value: isTarget)
+            .animation(Motion.expand, value: isTarget)
             .allowsHitTesting(false)
     }
 
@@ -413,10 +420,10 @@ struct WorkflowNodeCard: View {
             .fill(connected || isDragSource ? port.tint : AppColors.surface)
             .overlay(Circle().strokeBorder(port.tint, lineWidth: Stroke.heavy))
             .frame(
-                width: isDragSource ? diameter + 4 : diameter,
-                height: isDragSource ? diameter + 4 : diameter
+                width: isDragSource ? diameter + Self.activeSocketGrowth : diameter,
+                height: isDragSource ? diameter + Self.activeSocketGrowth : diameter
             )
-            .animation(.spring(response: 0.24, dampingFraction: 0.75), value: isDragSource)
+            .animation(Motion.expand, value: isDragSource)
             // A 14pt dot is a hard grab, and missing it starts a node drag
             // instead — a generous invisible target is kinder than precision.
             .contentShape(Circle().inset(by: -10))
@@ -443,7 +450,7 @@ struct WorkflowNodeCard: View {
             )
         }
         .onEnded { _ in
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.75)) {
+            withAnimation(Motion.expand) {
                 viewModel.completeDraft()
             }
         }

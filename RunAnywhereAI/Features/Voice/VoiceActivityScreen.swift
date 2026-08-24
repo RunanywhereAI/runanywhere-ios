@@ -18,7 +18,7 @@ struct VoiceActivityScreen: View {
 
                 activityLog
 
-                VoiceSection(title: "Model") {
+                ScreenSection(title: "Model") {
                     VoiceModelRow(slot: model.vad, isEnabled: !model.isListening) {
                         picking = .activity
                     }
@@ -50,7 +50,7 @@ struct VoiceActivityScreen: View {
                     .fill(statusTint.opacity(0.14))
                     .frame(width: VoiceMetrics.halo, height: VoiceMetrics.halo)
                     .scaleEffect(model.isSpeechDetected ? 1.1 : 1)
-                    .animation(.easeOut(duration: 0.18), value: model.isSpeechDetected)
+                    .animation(Motion.quick, value: model.isSpeechDetected)
 
                 Circle()
                     .fill(statusTint)
@@ -109,7 +109,7 @@ struct VoiceActivityScreen: View {
                     Capsule()
                         .fill(statusTint)
                         .frame(width: geo.size.width * CGFloat(min(max(model.probability, 0), 1)))
-                        .animation(.easeOut(duration: 0.12), value: model.probability)
+                        .animation(Motion.readout, value: model.probability)
                 }
             }
             .frame(height: Space.sm)
@@ -178,14 +178,16 @@ struct VoiceActivityScreen: View {
     // MARK: - Log
 
     private var activityLog: some View {
-        VoiceSection(title: "Activity") {
+        ScreenSection(title: "Activity") {
             VStack(spacing: 0) {
                 if model.log.isEmpty {
-                    Text("Nothing detected yet. Start listening and speak.")
-                        .appType(.meta)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Space.md)
+                    EmptyState(
+                        symbol: "waveform.badge.magnifyingglass",
+                        title: model.isListening ? "Listening" : "Nothing detected yet",
+                        detail: model.isListening
+                            ? "Speak, and every start and end of speech lands here."
+                            : "Start listening and speak — each utterance is logged with when it began."
+                    )
                 } else {
                     ForEach(Array(model.log.enumerated()), id: \.element.id) { index, entry in
                         if index > 0 {
@@ -198,18 +200,9 @@ struct VoiceActivityScreen: View {
             .card()
 
             if !model.log.isEmpty {
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) { model.clearLog() }
-                } label: {
-                    Text("Clear log")
-                        .appType(.meta)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .padding(.horizontal, Space.md)
-                        .frame(height: 30)
-                        .background(Capsule().fill(AppColors.surfaceMuted))
-                        .contentShape(Capsule())
+                PillButton(title: "Clear log", symbol: "xmark", tint: AppColors.textSecondary) {
+                    withAnimation(Motion.quick) { model.clearLog() }
                 }
-                .buttonStyle(.plain)
             }
         }
     }

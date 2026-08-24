@@ -107,7 +107,7 @@ struct VoiceLevelMeter: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .animation(.easeOut(duration: 0.12), value: levels)
+            .animation(Motion.readout, value: levels)
         }
         .accessibilityHidden(true)
     }
@@ -117,39 +117,13 @@ struct VoiceLevelMeter: View {
     }
 }
 
-/// A titled group, matching the section grammar the Settings screen uses.
-struct VoiceSection<Content: View>: View {
-    let title: String
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-            content
-        }
-    }
-}
-
 /// One word for what the screen is doing right now.
 struct VoiceStatusPill: View {
     let text: String
     let tint: Color
 
     var body: some View {
-        HStack(spacing: Space.xs) {
-            Circle()
-                .fill(tint)
-                .frame(width: Space.sm, height: Space.sm)
-            Text(text)
-                .appType(.chip)
-                .foregroundStyle(tint)
-        }
-        .padding(.horizontal, Space.md)
-        .frame(height: 26)
-        .background(Capsule().fill(tint.opacity(0.12)))
+        StatusTag(text: text, tint: tint)
     }
 }
 
@@ -187,14 +161,7 @@ struct VoiceModelRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Space.md) {
-                Image(systemName: slot.slot.symbol)
-                    .glyph(Glyph.md)
-                    .foregroundStyle(AppColors.brand)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .fill(AppColors.brandMuted)
-                    )
+                GlyphTile(symbol: slot.slot.symbol)
 
                 VStack(alignment: .leading, spacing: Space.hair) {
                     Text(slot.slot.title)

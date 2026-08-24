@@ -38,10 +38,10 @@ struct MoreScreen: View {
     private func section(_ group: MoreDestination.Group) -> some View {
         let items = MoreDestination.available(for: settings.mode).filter { $0.group == group }
         return VStack(alignment: .leading, spacing: Space.md) {
-            Text(group.title.uppercased())
-                .appType(.caption)
-                .tracking(0.6)
-                .foregroundStyle(AppColors.textTertiary)
+            Text(group.title)
+                .appType(.overline)
+                .textCase(.uppercase)
+                .foregroundStyle(AppColors.textSecondary)
 
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 240), spacing: Space.md)],
@@ -56,17 +56,10 @@ struct MoreScreen: View {
 
     private func tile(_ item: MoreDestination) -> some View {
         Button {
-            withAnimation(.easeOut(duration: 0.22)) { destination = item }
+            withAnimation(Motion.quick) { destination = item }
         } label: {
             HStack(alignment: .top, spacing: Space.md) {
-                Image(systemName: item.symbol)
-                    .glyph(Glyph.md, weight: .medium)
-                    .foregroundStyle(AppColors.accent)
-                    .frame(width: 38, height: 38)
-                    .background(
-                        RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                            .fill(AppColors.accentMuted)
-                    )
+                GlyphTile(symbol: item.symbol, tint: AppColors.accent, wash: AppColors.accentMuted)
 
                 VStack(alignment: .leading, spacing: Space.hair) {
                     Text(item.title)

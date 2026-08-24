@@ -457,6 +457,13 @@ enum WorkflowScheduleFormat {
         }
         return "\(seconds) second\(seconds == 1 ? "" : "s")"
     }
+
+    /// Time alone for today, day and time otherwise. A cron schedule can be
+    /// weeks out, and a bare "09:00" would read as this morning.
+    static func nextFire(_ date: Date) -> String {
+        let isToday = Calendar.current.isDateInToday(date)
+        return date.formatted(date: isToday ? .omitted : .abbreviated, time: .shortened)
+    }
 }
 
 extension RAComparisonOperator {

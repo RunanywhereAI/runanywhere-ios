@@ -90,12 +90,7 @@ struct BenchmarkRunDetail: View {
     }
 
     private func section(_ category: BenchmarkCategory) -> some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(category.title)
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
-
+        ScreenSection(title: category.title) {
             ForEach(run.results.filter { $0.category == category }) { result in
                 card(result)
             }
@@ -165,10 +160,7 @@ struct BenchmarkRunDetail: View {
 
     private var export: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Export")
-                .appType(.overline)
-                .textCase(.uppercase)
-                .foregroundStyle(AppColors.textSecondary)
+            SectionHeader("Export")
 
             VStack(spacing: Space.sm) {
                 ForEach(BenchmarkExportFormat.allCases) { format in
@@ -180,14 +172,14 @@ struct BenchmarkRunDetail: View {
 
     private func exportRow(_ format: BenchmarkExportFormat) -> some View {
         HStack(spacing: Space.md) {
-            Image(systemName: format.symbol)
-                .glyph(Glyph.sm)
-                .foregroundStyle(AppColors.accent)
-                .frame(width: 32, height: 32)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                        .fill(AppColors.accentMuted)
-                )
+            GlyphTile(
+                symbol: format.symbol,
+                tint: AppColors.accent,
+                wash: AppColors.accentMuted,
+                size: Control.tileSmall,
+                glyphSize: Glyph.sm,
+                radius: Radius.sm
+            )
 
             VStack(alignment: .leading, spacing: Space.hair) {
                 Text(format.title)
@@ -206,7 +198,7 @@ struct BenchmarkRunDetail: View {
                     Image(systemName: "square.and.arrow.up")
                         .glyph(Glyph.sm)
                         .foregroundStyle(AppColors.textSecondary)
-                        .frame(width: 32, height: 32)
+                        .frame(width: Control.tileSmall, height: Control.tileSmall)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -220,18 +212,15 @@ struct BenchmarkRunDetail: View {
 
     private func copyButton(_ format: BenchmarkExportFormat) -> some View {
         let isCopied = model.copied == format
-        return Button {
+        return PillButton(
+            title: isCopied ? "Copied" : "Copy",
+            symbol: isCopied ? "checkmark" : "doc.on.doc",
+            tint: isCopied ? AppColors.success : AppColors.brand,
+            fill: isCopied ? AppColors.successMuted : AppColors.brandMuted
+        ) {
             model.copy(run, as: format)
-        } label: {
-            Text(isCopied ? "Copied" : "Copy")
-                .appType(.meta)
-                .foregroundStyle(isCopied ? AppColors.success : AppColors.brand)
-                .padding(.horizontal, Space.md)
-                .frame(height: 32)
-                .background(Capsule().fill(isCopied ? AppColors.successMuted : AppColors.brandMuted))
-                .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .animation(Motion.fade, value: isCopied)
     }
 
     /// `ShareLink` needs a URL that already exists, so the three reports are

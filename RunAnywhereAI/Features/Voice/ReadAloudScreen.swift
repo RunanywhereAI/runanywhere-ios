@@ -19,7 +19,7 @@ struct ReadAloudScreen: View {
 
                 playback
 
-                VoiceSection(title: "Model") {
+                ScreenSection(title: "Model") {
                     VoiceModelRow(slot: model.tts, isEnabled: !model.isSpeaking) {
                         picking = .voice
                     }
@@ -43,7 +43,7 @@ struct ReadAloudScreen: View {
     // MARK: - Text
 
     private var editor: some View {
-        VoiceSection(title: "Text") {
+        ScreenSection(title: "Text") {
             VStack(alignment: .leading, spacing: Space.sm) {
                 TextEditor(text: $model.text)
                     .appType(.body)
@@ -62,22 +62,16 @@ struct ReadAloudScreen: View {
     }
 
     private var samples: some View {
-        VoiceSection(title: "Or read one of these") {
+        ScreenSection(title: "Or read one of these") {
             HStack(spacing: Space.xs) {
                 ForEach(ReadAloudSample.all) { sample in
-                    Button {
+                    PillButton(
+                        title: sample.title,
+                        tint: AppColors.textSecondary,
+                        isEnabled: !model.isSpeaking
+                    ) {
                         model.use(sample)
-                    } label: {
-                        Text(sample.title)
-                            .appType(.meta)
-                            .foregroundStyle(AppColors.textSecondary)
-                            .padding(.horizontal, Space.md)
-                            .frame(height: 30)
-                            .background(Capsule().fill(AppColors.surfaceMuted))
-                            .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
-                    .disabled(model.isSpeaking)
                 }
                 Spacer(minLength: 0)
             }
@@ -87,7 +81,7 @@ struct ReadAloudScreen: View {
     // MARK: - Speed
 
     private var speed: some View {
-        VoiceSection(title: "Speed") {
+        ScreenSection(title: "Speed") {
             VStack(alignment: .leading, spacing: Space.sm) {
                 HStack(spacing: Space.md) {
                     Slider(value: $model.rate, in: 0.5...2.0, step: 0.05)

@@ -27,13 +27,25 @@ final class WorkflowPackStore {
     private(set) var importOutcome: WorkflowImportOutcome?
 
     var errorMessage: String?
+    /// Set when the last listing threw, so the palette can say the packs could
+    /// not be read instead of claiming none are installed.
+    private(set) var listError: String?
 
     // MARK: - Installed packs
 
-    /// A failed listing leaves the palette without packs rather than blocking
-    /// the editor, the same way the workflow library does.
+    /// A failed listing reports itself in the palette rather than blocking the
+    /// editor, the same way the workflow library does. The distinction matters
+    /// more here than there: a swallowed failure also drives
+    /// `reconcilePackNodes`, which would repaint every pack node as missing.
     func refresh() async {
-        guard let packs = try? await RunAnywhere.workflows.packs() else { return }
+        let packs: [RANodePack]
+        do {
+            packs = try await RunAnywhere.workflows.packs()
+            listError = nil
+        } catch {
+            listError = error.localizedDescription
+            return
+        }
         installedPacks = packs.sorted { left, right in
             left.displayName.localizedCaseInsensitiveCompare(right.displayName) == .orderedAscending
         }

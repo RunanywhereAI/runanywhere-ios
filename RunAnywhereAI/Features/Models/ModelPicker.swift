@@ -74,37 +74,52 @@ struct ModelPickerList: View {
 
     private func row(_ model: InstalledModel) -> some View {
         let isActive = model.id == activeID
+        // A model the device refuses stays listed rather than vanishing: it is
+        // still the model the user came looking for, and a row that explains
+        // itself answers more than an empty list does.
+        let blocked = model.unavailableReason
         return Button {
             onSelect(model)
         } label: {
             HStack(spacing: Space.md) {
                 VStack(alignment: .leading, spacing: Space.hair) {
-                    Text(model.name)
+                    Text(model.label)
                         .appType(.secondary)
                         .fontWeight(isActive ? .semibold : .regular)
-                        .foregroundStyle(AppColors.textPrimary)
+                        .foregroundStyle(blocked == nil ? AppColors.textPrimary : AppColors.textSecondary)
                         .lineLimit(1)
 
-                    HStack(spacing: Space.xs) {
-                        Text("\(model.sizeLabel) · \(model.backend)")
+                    if let blocked {
+                        Text(blocked)
                             .appType(.caption)
-                            .foregroundStyle(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        HStack(spacing: Space.xs) {
+                            Text("\(model.sizeLabel) · \(model.backend)")
+                                .appType(.caption)
+                                .foregroundStyle(AppColors.textSecondary)
 
-                        if model.purpose == .vision {
-                            CapabilityTag(symbol: "eye", title: "Vision", tint: AppColors.success)
-                        }
-                        if model.supportsTools {
-                            CapabilityTag(symbol: "wrench.adjustable", title: "Tools", tint: AppColors.brand)
-                        }
-                        if model.supportsThinking {
-                            CapabilityTag(symbol: "brain", title: "Thinking", tint: AppColors.info)
+                            if model.purpose == .vision {
+                                CapabilityTag(symbol: "eye", title: "Vision", tint: AppColors.success)
+                            }
+                            if model.supportsTools {
+                                CapabilityTag(symbol: "wrench.adjustable", title: "Tools", tint: AppColors.brand)
+                            }
+                            if model.supportsThinking {
+                                CapabilityTag(symbol: "brain", title: "Thinking", tint: AppColors.info)
+                            }
                         }
                     }
                 }
 
                 Spacer(minLength: Space.sm)
 
-                if isActive {
+                if blocked != nil {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .glyph(Glyph.xs, weight: .semibold)
+                        .foregroundStyle(AppColors.warning)
+                } else if isActive {
                     Image(systemName: "checkmark")
                         .glyph(Glyph.xs, weight: .semibold)
                         .foregroundStyle(AppColors.brand)
@@ -120,6 +135,8 @@ struct ModelPickerList: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(blocked != nil)
+        .accessibilityHint(blocked ?? "")
     }
 }
 

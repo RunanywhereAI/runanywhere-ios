@@ -5,7 +5,12 @@ import os
 
 struct InstalledModel: Identifiable, Hashable {
     let id: String
+    /// The catalog's own name, exact down to the quantisation. Developer mode
+    /// shows this; nothing else should.
     let name: String
+    /// Publisher, family and size — what user mode shows. Unique across the
+    /// catalog, so it is safe as a row's only label.
+    let displayName: String
     let publisher: String
     let sizeLabel: String
     let backend: String
@@ -15,7 +20,16 @@ struct InstalledModel: Identifiable, Hashable {
     let supportsTools: Bool
     let purpose: ModelPurpose
     let isDownloaded: Bool
+    let isBuiltIn: Bool
     let isAvailable: Bool
+    /// Set when the device itself refuses this model, in words the user can act
+    /// on. Distinct from "not downloaded": there is nothing to download.
+    let unavailableReason: String?
+
+    /// The label to put on screen for whoever is using the app right now.
+    var label: String {
+        AppColors.mode == .developer ? name : displayName
+    }
 }
 
 @Observable
@@ -23,8 +37,17 @@ struct InstalledModel: Identifiable, Hashable {
 final class ModelStore {
     private(set) var models: [InstalledModel] = []
     private(set) var raw: [ModelInfo] = []
+    private(set) var displayNames: [String: String] = [:]
+    /// The curated five per modality. Held here rather than derived in a view
+    /// body: it only changes when the catalog does, and a download's progress
+    /// ticks redraw every screen that shows one.
+    private(set) var shortlists: [CuratedModels] = []
     private(set) var loadedLanguageModel: InstalledModel?
     private(set) var isRefreshing = false
+    /// Whether the catalog has been read at least once. An empty `raw` before
+    /// the first read and an empty `raw` after one mean opposite things to a
+    /// screen deciding between "still loading" and "nothing here".
+    private(set) var hasLoaded = false
     private(set) var downloading: [String: Double] = [:]
     private(set) var lastError: String?
 
@@ -35,13 +58,20 @@ final class ModelStore {
 
     func refresh() async {
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            hasLoaded = true
+        }
         do {
             let list = try await RunAnywhere.models.list()
             raw = list
-            models = list.map(Self.map)
+            displayNames = ConsumerModelName.uniqueNames(for: list)
+            shortlists = ModelCuration.shortlists(from: list)
+            models = list.map { Self.map($0, displayName: displayName(for: $0)) }
             let state = await RunAnywhere.models.state()
-            loadedLanguageModel = state.loaded[.language].map(Self.map)
+            loadedLanguageModel = state.loaded[.language].map {
+                Self.map($0, displayName: displayName(for: $0))
+            }
             lastError = nil
         } catch {
             logger.error("model list failed: \(error, privacy: .public)")
@@ -91,6 +121,34 @@ final class ModelStore {
         models.first { $0.id == id }?.name ?? id
     }
 
+    /// The consumer name for a catalog row, disambiguated against the rest of
+    /// the catalog. Falls back to a standalone derivation for a model the last
+    /// refresh did not see.
+    func displayName(for model: ModelInfo) -> String {
+        displayNames[model.id] ?? model.consumerDisplayName
+    }
+
+    /// What a row should be titled for whoever is using the app right now.
+    func label(for model: ModelInfo) -> String {
+        AppColors.mode == .developer ? model.name : displayName(for: model)
+    }
+
+    /// The chat shortlist, or an empty one when the catalog has no chat models
+    /// this device can run.
+    var chatShortlist: CuratedModels {
+        shortlists.first { $0.purpose == .language }
+            ?? CuratedModels(purpose: .language, models: [], recommendedID: nil)
+    }
+
+    /// A chat turn can start only when something able to hold one is on the
+    /// device. Vision models count: they answer text as well as images.
+    var hasChatCapableModel: Bool {
+        models.contains { model in
+            (model.purpose == .language || model.purpose == .vision)
+                && (model.isDownloaded || model.isBuiltIn)
+        }
+    }
+
     var isDownloading: Bool { !downloading.isEmpty }
 
     var aggregateProgress: Double {
@@ -113,10 +171,11 @@ final class ModelStore {
         _ = try await RunAnywhere.models.load(id: id)
     }
 
-    private static func map(_ info: ModelInfo) -> InstalledModel {
+    private static func map(_ info: ModelInfo, displayName: String) -> InstalledModel {
         InstalledModel(
             id: info.id,
             name: info.name.isEmpty ? info.id : info.name,
+            displayName: displayName,
             publisher: publisher(for: info),
             sizeLabel: sizeLabel(info.downloadSizeBytes),
             backend: backendLabel(info),
@@ -130,34 +189,16 @@ final class ModelStore {
             ),
             purpose: ModelPurpose.of(info),
             isDownloaded: !info.localPath.isEmpty,
-            isAvailable: info.isAvailableForUse
+            isBuiltIn: info.isBuiltIn,
+            isAvailable: info.isAvailableForUse && info.runtimeUnavailableReason == nil,
+            unavailableReason: info.runtimeUnavailableReason
         )
     }
 
+    /// The same publisher table the naming and the browse screen read, rather
+    /// than a second one that can disagree with them about who made a model.
     private static func publisher(for info: ModelInfo) -> String {
-        let name = info.name.isEmpty ? info.id : info.name
-        let lowered = name.lowercased()
-        let table: [(String, String)] = [
-            ("qwen", "Qwen"),
-            ("gemma", "Google"),
-            ("lfm", "Liquid AI"),
-            ("liquid", "Liquid AI"),
-            ("ministral", "Mistral"),
-            ("mistral", "Mistral"),
-            ("llama", "Meta"),
-            ("granite", "IBM"),
-            ("phi", "Microsoft"),
-            ("smol", "Hugging Face"),
-            ("whisper", "OpenAI"),
-            ("parakeet", "NVIDIA"),
-            ("piper", "Piper"),
-            ("silero", "Silero"),
-            ("sherpa", "Sherpa")
-        ]
-        for (needle, label) in table where lowered.contains(needle) {
-            return label
-        }
-        return "Other"
+        ModelOrgCatalog.org(for: info).displayName
     }
 
     private static func sizeLabel(_ bytes: Int64) -> String {

@@ -75,7 +75,8 @@ struct ModelRecommendationEngine {
         from models: [RAModelInfo],
         canRunByModelID: [String: Bool] = [:]
     ) -> RecommendedSelection {
-        let byID = Dictionary(models.map { ($0.id, $0) }) { first, _ in first }
+        let candidates = runnableCandidates(models, appleFoundationAvailable: appleFoundationAvailable)
+        let byID = Dictionary(candidates.map { ($0.id, $0) }) { first, _ in first }
         let prefs = preferences(for: tier)
 
         let recommendedLLMs = pickModels(
@@ -87,7 +88,7 @@ struct ModelRecommendationEngine {
         )
 
         let appleFoundation = appleFoundationAvailable
-            ? models.first { $0.isAppleFoundationModel && $0.category == .language }
+            ? candidates.first { $0.isAppleFoundationModel && $0.category == .language }
             : nil
 
         let defaultChat = appleFoundation ?? recommendedLLMs.first
@@ -132,11 +133,12 @@ struct ModelRecommendationEngine {
         from models: [RAModelInfo],
         canRunByModelID: [String: Bool] = [:]
     ) -> VoicePipeline {
-        let byID = Dictionary(models.map { ($0.id, $0) }) { first, _ in first }
+        let candidates = runnableCandidates(models, appleFoundationAvailable: appleFoundationAvailable)
+        let byID = Dictionary(candidates.map { ($0.id, $0) }) { first, _ in first }
         let prefs = preferences(for: tier)
 
         let appleFoundation = appleFoundationAvailable
-            ? models.first { $0.isAppleFoundationModel && $0.category == .language }
+            ? candidates.first { $0.isAppleFoundationModel && $0.category == .language }
             : nil
         let llm = appleFoundation
             ?? pickFirst(ids: prefs.llmIDs, category: .language, from: byID, canRunByModelID: canRunByModelID)
@@ -211,13 +213,30 @@ struct ModelRecommendationEngine {
             .filter { $0.category == category }
             .filter { !pickedIDs.contains($0.id) }
             .filter { isRunnable($0, canRunByModelID: canRunByModelID) }
-            .sorted { $0.consumerSizeBytes < $1.consumerSizeBytes }
+            // Ties on size are broken by id so a refresh does not reshuffle the
+            // list: `byID.values` iterates in hash order, which varies per run.
+            .sorted { $0.consumerSizeBytes == $1.consumerSizeBytes
+                ? $0.id < $1.id
+                : $0.consumerSizeBytes < $1.consumerSizeBytes }
 
         for model in backfill where picked.count < limit {
             picked.append(model)
             pickedIDs.insert(model.id)
         }
         return picked
+    }
+
+    /// The pool every pick draws from.
+    ///
+    /// Gating only the explicit Apple pick was not enough: the category
+    /// back-fill reads the whole catalog, so on a device where Apple
+    /// Intelligence is off the built-in model came back as an ordinary local
+    /// LLM and could land as the default chat model — a row that cannot load.
+    private func runnableCandidates(
+        _ models: [RAModelInfo],
+        appleFoundationAvailable: Bool
+    ) -> [RAModelInfo] {
+        appleFoundationAvailable ? models : models.filter { !$0.isAppleFoundationModel }
     }
 
     /// Below this, the curated list is treated as having failed and the category

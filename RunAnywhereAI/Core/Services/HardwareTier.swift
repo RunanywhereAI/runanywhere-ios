@@ -68,11 +68,24 @@ struct HardwareTierResolver {
     /// Whether Apple's built-in Foundation model is available as the default
     /// chat model on this runtime (iOS/macOS 26+ with Apple Intelligence).
     var appleFoundationAvailable: Bool {
+        appleFoundationUnavailableReason == nil
+    }
+
+    /// Why Apple's built-in model cannot run here, or nil when it can.
+    ///
+    /// Every reason the SDK reports is something the person holding the device
+    /// can act on — turn Apple Intelligence on, wait for the model to finish
+    /// downloading, use a different device. Collapsing them to a bare `false`
+    /// leaves the row looking broken with nothing to do about it, so the reason
+    /// travels with the verdict rather than being recomputed at each call site.
+    var appleFoundationUnavailableReason: String? {
         #if os(iOS) || os(macOS)
         if #available(iOS 26.0, macOS 26.0, *) {
-            return SystemFoundationModels.isAvailable
+            return SystemFoundationModels.unavailableReason
         }
+        return "Apple's built-in model needs iOS 26 or macOS 26."
+        #else
+        return "Apple's built-in model is not available on this platform."
         #endif
-        return false
     }
 }

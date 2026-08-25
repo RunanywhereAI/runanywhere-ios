@@ -413,6 +413,16 @@ extension RAModelInfo {
         framework == .foundationModels
     }
 
+    /// Why this model cannot be used on this device right now, or nil when it
+    /// can. Apple's built-in model is the only one a runtime refuses on its
+    /// own — the rest are a question of whether the file is on disk — and the
+    /// framework re-reads its own state each call, so a setting changed while
+    /// the app is open is picked up on the next catalog refresh.
+    var runtimeUnavailableReason: String? {
+        guard isAppleFoundationModel else { return nil }
+        return HardwareTierResolver().appleFoundationUnavailableReason
+    }
+
     var isLoraAdapterModel: Bool {
         isLoRAAdapterArtifact
     }
@@ -643,44 +653,6 @@ extension RAModelInfo {
     /// already conveyed by a relative descriptor such as "Smaller · faster".
     var consumerCapabilityTags: [ModelCapabilityBadge] {
         consumerTags.filter { !$0.id.hasPrefix("feel-") }
-    }
-
-    /// Clean, human display name: family + parameter size, with quantization
-    /// suffixes (Q4_K_M, Q8_0, 4bit, DWQ, …) and backend/vendor prefixes
-    /// stripped. "MLX Qwen3 0.6B 4bit" → "Qwen3 0.6B",
-    /// "LiquidAI LFM2 1.2B Tool Q4_K_M" → "LFM2 1.2B Tool".
-    var consumerDisplayName: String {
-        Self.cleanDisplayName(from: name)
-    }
-
-    /// Tokens never shown in a consumer display name (lowercased).
-    private static let strippedNameTokens: Set<String> = [
-        "mlx", "liquidai", "sherpa", "gguf",
-        "q4_k_m", "q4_k_s", "q5_k_m", "q6_k", "q8_0",
-        "4bit", "5bit", "6bit", "8bit", "f16", "fp16", "dwq"
-    ]
-
-    /// Parenthetical segments removed when their content is technical.
-    private static let strippedParentheticals: Set<String> = [
-        "onnx", "tool calling", "embedding"
-    ]
-
-    private static func cleanDisplayName(from rawName: String) -> String {
-        var text = rawName
-
-        // Drop technical parentheticals like "(ONNX)" / "(Tool Calling)".
-        for phrase in strippedParentheticals {
-            let pattern = "(?i)\\([^)]*\(phrase)[^)]*\\)"
-            text = text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
-        }
-
-        let cleaned = text
-            .split(separator: " ")
-            .filter { !strippedNameTokens.contains($0.lowercased()) }
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespaces)
-
-        return cleaned.isEmpty ? rawName : cleaned
     }
 }
 

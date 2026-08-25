@@ -7,6 +7,7 @@ struct ModelActionButton: View {
     var expands = false
 
     private var progress: Double? { store.downloading[model.id] }
+    @State private var confirmingRemoval = false
     private var isInstalled: Bool { !model.localPath.isEmpty || model.isBuiltIn }
 
     var body: some View {
@@ -22,10 +23,45 @@ struct ModelActionButton: View {
             }
             .frame(maxWidth: expands ? .infinity : 130)
         } else if model.isBuiltIn {
-            pill("Built in", symbol: "checkmark", tint: AppColors.success, wash: AppColors.successMuted, run: nil)
+            // "Built in" with a green tick claimed Apple's model was ready to
+            // use on machines where the framework refuses it, so choosing it
+            // failed with nothing on screen explaining why. The runtime's own
+            // reason is the only thing that can answer that.
+            if let reason = builtInUnavailableReason {
+                pillLabel("Unavailable", symbol: "exclamationmark.triangle.fill",
+                          tint: AppColors.warning, wash: AppColors.warningMuted)
+                    .help(reason)
+            } else {
+                pill("Built in", symbol: "checkmark", tint: AppColors.success, wash: AppColors.successMuted, run: nil)
+            }
         } else if isInstalled {
-            pill("Installed", symbol: "checkmark", tint: AppColors.success, wash: AppColors.successMuted) {
-                Task { await store.delete(model.id) }
+            // A status, not a button. This used to delete the model on tap:
+            // a green checkmark reading "Installed" is the last thing anyone
+            // expects to destroy a multi-gigabyte download, and it did it with
+            // no confirmation. Removal now lives behind a menu, with the same
+            // confirmation Settings already uses.
+            Menu {
+                Button("Remove from this device", systemImage: "trash", role: .destructive) {
+                    confirmingRemoval = true
+                }
+            } label: {
+                pillLabel("Installed", symbol: "checkmark", tint: AppColors.success,
+                          wash: AppColors.successMuted)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .confirmationDialog(
+                "Remove \(store.label(for: model))?",
+                isPresented: $confirmingRemoval,
+                titleVisibility: .visible
+            ) {
+                Button("Remove", role: .destructive) {
+                    Task { await store.delete(model.id) }
+                }
+                Button("Keep", role: .cancel) {}
+            } message: {
+                Text("It stays in the catalog, so you can download it again.")
             }
         } else {
             pill("Get", symbol: "arrow.down", tint: AppColors.brand, wash: AppColors.brandMuted) {
@@ -34,23 +70,35 @@ struct ModelActionButton: View {
         }
     }
 
+    private var builtInUnavailableReason: String? {
+        Self.builtInUnavailableReason(for: model)
+    }
+
+    static func builtInUnavailableReason(for model: ModelInfo) -> String? {
+        model.runtimeUnavailableReason
+    }
+
     private func pill(_ title: String, symbol: String, tint: Color, wash: Color, run: (() -> Void)?) -> some View {
         Button { run?() } label: {
-            HStack(spacing: Space.xs) {
-                Image(systemName: symbol)
-                    .glyph(Glyph.xs, weight: .semibold)
-                Text(title)
-                    .appType(.meta)
-            }
-            .foregroundStyle(tint)
-            .frame(maxWidth: expands ? .infinity : nil)
-            .padding(.horizontal, Space.md)
-            .frame(height: 30)
-            .background(Capsule().fill(wash))
-            .contentShape(Capsule())
+            pillLabel(title, symbol: symbol, tint: tint, wash: wash)
         }
         .buttonStyle(.plain)
         .disabled(run == nil)
+    }
+
+    private func pillLabel(_ title: String, symbol: String, tint: Color, wash: Color) -> some View {
+        HStack(spacing: Space.xs) {
+            Image(systemName: symbol)
+                .glyph(Glyph.xs, weight: .semibold)
+            Text(title)
+                .appType(.meta)
+        }
+        .foregroundStyle(tint)
+        .frame(maxWidth: expands ? .infinity : nil)
+        .padding(.horizontal, Space.md)
+        .frame(height: 30)
+        .background(Capsule().fill(wash))
+        .contentShape(Capsule())
     }
 }
 
@@ -71,7 +119,7 @@ struct RecommendedHero: View {
                 Spacer(minLength: 0)
             }
 
-            Text(model.name)
+            Text(store.label(for: model))
                 .appType(.title)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(2)
@@ -110,9 +158,31 @@ struct MetaBadge: View {
     }
 }
 
+/// How many of a publisher's models are already on the device.
+struct ReadyCountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count) ready")
+            .appType(.caption)
+            .foregroundStyle(AppColors.success)
+            .padding(.horizontal, Space.sm)
+            .frame(height: 20)
+            .background(Capsule().fill(AppColors.successMuted))
+    }
+}
+
+/// A model as a card, for the grid layout. Width comes from the column it lands
+/// in, so nothing inside it is fixed: the name wraps, the tags wrap after it,
+/// and the action sits on the floor of whatever height the row settles at.
 struct ModelTile: View {
     let model: ModelInfo
     let store: ModelStore
+    /// Where the model stands in its shortlist, when it came from one. Nil in
+    /// the developer catalog, where the publisher leads the card instead.
+    var standing: ModelStanding?
+
+    private var isRecommended: Bool { standing == .recommended }
 
     private var supportsTools: Bool {
         ToolCapability.supports(id: model.id, name: model.name, downloadBytes: model.downloadSizeBytes)
@@ -125,158 +195,100 @@ struct ModelTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            HStack(spacing: Space.xs) {
-                Image(systemName: ModelOrgCatalog.org(for: model).systemImage)
-                    .glyph(Glyph.xs)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ModelOrgCatalog.org(for: model).displayName)
-                    .appType(.overline)
-                    .textCase(.uppercase)
-                    .foregroundStyle(AppColors.textSecondary)
-                Spacer(minLength: 0)
-            }
+            overline
 
-            Text(model.name)
+            Text(store.label(for: model))
                 .appType(.cardTitle)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: Space.xs) {
+            WrapLayout {
                 MetaBadge(text: model.consumerSizeLabel)
-                MetaBadge(text: model.framework.consumerBackendBadgeLabel)
+                if standing == nil {
+                    MetaBadge(text: model.framework.consumerBackendBadgeLabel)
+                }
                 if isVision {
                     CapabilityTag(symbol: "eye", title: "Vision", tint: AppColors.success)
+                }
+                if model.supportsThinking {
+                    CapabilityTag(symbol: "brain", title: "Thinking", tint: AppColors.info)
                 }
                 if supportsTools {
                     CapabilityTag(symbol: "wrench.adjustable", title: "Tools", tint: AppColors.brand)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
             ModelActionButton(model: model, store: store, expands: true)
         }
         .padding(Space.md)
-        .frame(width: 230, height: 178, alignment: .topLeading)
-        .card()
-    }
-}
-
-struct OrgRow: View {
-    let group: ModelOrgGroup
-    let store: ModelStore
-
-    private var installedCount: Int {
-        group.models.filter { !$0.localPath.isEmpty || $0.isBuiltIn }.count
-    }
-
-    var body: some View {
-        HStack(spacing: Space.md) {
-            Image(systemName: group.org.systemImage)
-                .glyph(Glyph.md)
-                .foregroundStyle(AppColors.brand)
-                .frame(width: 38, height: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(AppColors.brandMuted)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                .fill(isRecommended ? AppColors.brandMuted : AppColors.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                .strokeBorder(
+                    isRecommended ? AppColors.brand.opacity(0.35) : AppColors.border,
+                    lineWidth: Stroke.hairline
                 )
-
-            VStack(alignment: .leading, spacing: Space.hair) {
-                Text(group.displayName)
-                    .appType(.cardTitle)
-                    .foregroundStyle(AppColors.textPrimary)
-                Text(subtitle)
-                    .appType(.meta)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-
-            Spacer(minLength: 0)
-
-            if installedCount > 0 {
-                Text("\(installedCount) ready")
-                    .appType(.caption)
-                    .foregroundStyle(AppColors.success)
-                    .padding(.horizontal, Space.sm)
-                    .frame(height: 20)
-                    .background(Capsule().fill(AppColors.successMuted))
-            }
-
-            Image(systemName: "chevron.right")
-                .glyph(Glyph.sm)
-                .foregroundStyle(AppColors.textTertiary)
-        }
-        .padding(Space.md)
-        .card()
-        .contentShape(Rectangle())
+        )
     }
 
-    private var subtitle: String {
-        let count = group.optionCount
-        return count == 1 ? "1 model" : "\(count) models"
+    @ViewBuilder
+    private var overline: some View {
+        if let standing {
+            HStack(spacing: Space.xs) {
+                Image(systemName: standing.symbol)
+                    .glyph(Glyph.xs, weight: .semibold)
+                Text(standing.shortLabel)
+                    .appType(.overline)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(isRecommended ? AppColors.brand : AppColors.textSecondary)
+            .accessibilityLabel(standing.label)
+        } else {
+            HStack(spacing: Space.xs) {
+                Image(systemName: ModelOrgCatalog.org(for: model).systemImage)
+                    .glyph(Glyph.xs)
+                Text(ModelOrgCatalog.org(for: model).displayName)
+                    .appType(.overline)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(AppColors.textSecondary)
+        }
     }
 }
 
-struct OrgDetail: View {
-    let group: ModelOrgGroup
+/// A model as a row: the name, one line of context, the badges and the action
+/// on the right. The developer catalog's counterpart to `CuratedModelRow`.
+struct CatalogModelRow: View {
+    let model: ModelInfo
     let store: ModelStore
-    let onBack: () -> Void
+    /// The line under the name — where the model sits among a publisher's other
+    /// sizes, or who published it when the section is a category.
+    let caption: String
+    var captionTint: Color = AppColors.textSecondary
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Space.md) {
-                Button(action: onBack) {
-                    HStack(spacing: Space.xs) {
-                        Image(systemName: "chevron.left")
-                            .glyph(Glyph.sm, weight: .semibold)
-                        Text("All publishers")
-                            .appType(.secondary)
-                    }
-                    .foregroundStyle(AppColors.brand)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                HStack(spacing: Space.md) {
-                    Image(systemName: group.org.systemImage)
-                        .glyph(Glyph.lg)
-                        .foregroundStyle(AppColors.brand)
-                        .frame(width: 46, height: 46)
-                        .background(
-                            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                                .fill(AppColors.brandMuted)
-                        )
-                    VStack(alignment: .leading, spacing: Space.hair) {
-                        Text(group.displayName)
-                            .appType(.title)
-                            .foregroundStyle(AppColors.textPrimary)
-                        Text("Smaller and faster at the top, larger and smarter below.")
-                            .appType(.meta)
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
-                    Spacer(minLength: 0)
-                }
-
-                ForEach(Array(group.models.enumerated()), id: \.element.id) { index, model in
-                    variantRow(model, position: index, count: group.models.count)
-                }
-            }
-            .padding(Space.lg)
-            .measured()
-        }
-    }
-
-    private func variantRow(_ model: ModelInfo, position: Int, count: Int) -> some View {
         HStack(spacing: Space.md) {
             VStack(alignment: .leading, spacing: Space.hair) {
-                Text(model.name)
+                Text(store.label(for: model))
                     .appType(.cardTitle)
                     .foregroundStyle(AppColors.textPrimary)
                     .lineLimit(1)
-                Text(model.variantFeelLabel(position: position, count: count))
+                Text(caption)
                     .appType(.caption)
-                    .foregroundStyle(AppColors.brand)
+                    .foregroundStyle(captionTint)
                 HStack(spacing: Space.xs) {
                     MetaBadge(text: model.consumerSizeLabel)
                     MetaBadge(text: model.framework.consumerBackendBadgeLabel)
@@ -300,5 +312,147 @@ struct OrgDetail: View {
         }
         .padding(Space.md)
         .card()
+    }
+}
+
+struct OrgRow: View {
+    let group: ModelOrgGroup
+    let store: ModelStore
+
+    var body: some View {
+        HStack(spacing: Space.md) {
+            GlyphTile(symbol: group.org.systemImage)
+
+            VStack(alignment: .leading, spacing: Space.hair) {
+                Text(group.displayName)
+                    .appType(.cardTitle)
+                    .foregroundStyle(AppColors.textPrimary)
+                Text(group.modelCountLabel)
+                    .appType(.meta)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer(minLength: 0)
+
+            if group.installedCount > 0 {
+                ReadyCountBadge(count: group.installedCount)
+            }
+
+            Image(systemName: "chevron.right")
+                .glyph(Glyph.sm)
+                .foregroundStyle(AppColors.textTertiary)
+        }
+        .padding(Space.md)
+        .card()
+        .contentShape(Rectangle())
+    }
+}
+
+/// A publisher as a card, so the index reflows with everything else when the
+/// reader asks for a grid.
+struct OrgTile: View {
+    let group: ModelOrgGroup
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            HStack(spacing: Space.sm) {
+                GlyphTile(
+                    symbol: group.org.systemImage,
+                    size: Control.tileSmall,
+                    glyphSize: Glyph.sm,
+                    radius: Radius.sm
+                )
+                Spacer(minLength: 0)
+                if group.installedCount > 0 {
+                    ReadyCountBadge(count: group.installedCount)
+                }
+            }
+
+            Text(group.displayName)
+                .appType(.cardTitle)
+                .foregroundStyle(AppColors.textPrimary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(group.modelCountLabel)
+                .appType(.meta)
+                .foregroundStyle(AppColors.textSecondary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(Space.md)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .card()
+        .contentShape(Rectangle())
+    }
+}
+
+extension ModelOrgGroup {
+    var installedCount: Int {
+        models.filter { !$0.localPath.isEmpty || $0.isBuiltIn }.count
+    }
+
+    var modelCountLabel: String {
+        optionCount == 1 ? "1 model" : "\(optionCount) models"
+    }
+}
+
+struct OrgDetail: View {
+    let group: ModelOrgGroup
+    let store: ModelStore
+    let onBack: () -> Void
+
+    @Bindable private var preferences = ModelBrowsePreferences.shared
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Space.md) {
+                Button(action: onBack) {
+                    HStack(spacing: Space.xs) {
+                        Image(systemName: "chevron.left")
+                            .glyph(Glyph.sm, weight: .semibold)
+                        Text("All publishers")
+                            .appType(.secondary)
+                    }
+                    .foregroundStyle(AppColors.brand)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                HStack(spacing: Space.md) {
+                    GlyphTile(symbol: group.org.systemImage, glyphSize: Glyph.lg)
+                    VStack(alignment: .leading, spacing: Space.hair) {
+                        Text(group.displayName)
+                            .appType(.title)
+                            .foregroundStyle(AppColors.textPrimary)
+                        Text("Smaller and faster at the top, larger and smarter below.")
+                            .appType(.meta)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: Space.sm)
+                    ViewOptionControl(selection: $preferences.layout, showsTitles: false)
+                }
+
+                switch preferences.layout {
+                case .list:
+                    ForEach(Array(group.models.enumerated()), id: \.element.id) { index, model in
+                        CatalogModelRow(
+                            model: model,
+                            store: store,
+                            caption: model.variantFeelLabel(position: index, count: group.models.count),
+                            captionTint: AppColors.brand
+                        )
+                    }
+                case .grid:
+                    ModelCardGrid(items: group.models, id: \.id) { model in
+                        ModelTile(model: model, store: store)
+                    }
+                }
+            }
+            .padding(Space.lg)
+            .measured()
+        }
     }
 }

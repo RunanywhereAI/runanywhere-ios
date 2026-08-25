@@ -144,7 +144,22 @@ final class ChatViewModel {
                 var answer = ""
                 let events: AsyncThrowingStream<RagEvent, Error>
                 do {
-                    events = try await session.queryStream(question: question)
+                    // The RAG graph streams engine tokens straight through with
+                    // no splitter, and only extracts thinking from the final
+                    // answer. With reasoning unstated a thinking model's whole
+                    // chain of thought scrolls into the answer bubble for the
+                    // turn, then snaps to the real answer at completion, and
+                    // half the generation budget goes to reasoning nobody sees.
+                    var generation = LlmOptions()
+                    generation.systemPrompt = Self.systemPrompt(toolsEnabled: false)
+                    var reasoning = ReasoningOptions()
+                    reasoning.mode = thinkingEnabled ? .on : .off
+                    reasoning.includeInOutput = false
+                    generation.reasoning = reasoning
+                    events = try await session.queryStream(
+                        question: question,
+                        options: RagQueryOptions(generation: generation)
+                    )
                 } catch {
                     throw RagStageError(stage: "asking the document", underlying: Self.describe(error))
                 }

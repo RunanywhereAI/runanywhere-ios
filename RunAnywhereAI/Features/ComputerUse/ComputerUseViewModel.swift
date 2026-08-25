@@ -106,8 +106,14 @@ final class ComputerUseViewModel {
         runTask = Task { [weak self] in
             guard let self else { return }
             do {
+                // Temperature 0: the screen parses a strict `<tool_call>` JSON
+                // schema and reports anything else as "the model replied
+                // without a tool call". The SDK default of 0.7 samples against
+                // that for no benefit; every other structured call site here
+                // pins sampling the same way.
                 let options = LlmOptions(
                     maxOutputTokens: Self.maxOutputTokens,
+                    temperature: 0,
                     systemPrompt: systemPrompt
                 )
                 let stream = try await RunAnywhere.vlm.generateStream(

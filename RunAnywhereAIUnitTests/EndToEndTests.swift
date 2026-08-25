@@ -154,15 +154,23 @@ final class EndToEndTests: XCTestCase {
         )
     }
 
+    /// The options chat really sends, not a bare prompt.
+    ///
+    /// Judging a model on a prompt with no system instruction measures the
+    /// wrong thing: given nothing to go on, a small model has no reason to
+    /// reason, and the failure is the harness rather than the model. This is
+    /// what a reader with the Thinking toggle on actually gets.
+    @MainActor
     private func answer(
         reasoning mode: ReasoningMode,
         from model: RAModelInfo
     ) async throws -> GenerationResult {
-        var options = shortOptions(maxTokens: 2048)
+        var options = chatOptions(thinking: mode == .on, model: model)
+        options.maxOutputTokens = 2048
         var reasoning = ReasoningOptions()
         reasoning.mode = mode
+        reasoning.includeInOutput = mode == .on
         options.reasoning = reasoning
-        options.model = model.id
         return try await RunAnywhere.llm.generate(
             prompt: "If a train leaves at 3:15pm and takes 95 minutes, what time does it arrive?",
             options: options

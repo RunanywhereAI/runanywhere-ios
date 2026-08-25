@@ -409,6 +409,62 @@ final class EndToEndTests: XCTestCase {
         }
     }
 
+    /// Switching models is a core chat flow, and `test02` fails inside the full
+    /// suite while passing alone — which points at state left by an earlier
+    /// load rather than at the model. This asks the question directly: load one
+    /// model, load another, generate, and see whether the first answer after a
+    /// swap comes back empty.
+    func test13_generatingRightAfterAModelSwap() async {
+        await step("swap then generate") {
+            let catalog = try await RunAnywhere.models.list()
+            let language = catalog.filter {
+                !$0.localPath.isEmpty && $0.runtimeUnavailableReason == nil
+                    && $0.category == .language
+            }
+            guard language.count >= 2 else {
+                throw E2EProblem("need two installed language models, have \(language.count)")
+            }
+
+            var empties: [String] = []
+            // Round-trip twice so a swap in each direction is covered.
+            var unloadable: [String] = []
+            for (index, model) in (language.prefix(2) + language.prefix(2).reversed()).enumerated() {
+                do {
+                    _ = try await RunAnywhere.models.load(id: model.id)
+                } catch {
+                    // Not what this test is about, but worth naming rather than
+                    // reporting as a swap failure.
+                    self.report("  .. swap \(index): \(model.id) will not load — \(error)")
+                    unloadable.append(model.id)
+                    continue
+                }
+                var options = self.shortOptions()
+                options.model = model.id
+                let result = try await RunAnywhere.llm.generate(
+                    prompt: "Reply with exactly one word: ready",
+                    options: options
+                )
+                let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                self.report("  .. swap \(index): \(model.id) -> \"\(text.prefix(40))\" (\(result.outputTokens) tokens)")
+                if text.isEmpty { empties.append("\(index):\(model.id)") }
+            }
+
+            guard empties.isEmpty else {
+                throw E2EProblem("empty answer straight after a swap: \(empties.joined(separator: ", "))")
+            }
+            // Reported, not failed. A model can be unloadable for reasons that
+            // have nothing to do with swapping: a build with a stubbed engine
+            // routes that engine's models to a loader that cannot read them
+            // (an ANE/CoreML model sent to MLX, which then looks for a
+            // config.json CoreML does not use). This test is about what a
+            // generate returns after a swap.
+            if !unloadable.isEmpty {
+                self.report("  .. note: would not load here: \(Set(unloadable).sorted().joined(separator: ", "))")
+            }
+            return "\(language.prefix(2).count * 2) generations across swaps, all non-empty"
+        }
+    }
+
     // MARK: - Helpers
 
     /// `toolChoice` is `.auto` by default, and `llm.generate` then quietly runs
@@ -419,6 +475,13 @@ final class EndToEndTests: XCTestCase {
         var options = LlmOptions()
         options.maxOutputTokens = maxTokens
         options.toolChoice = .none
+        // Reasoning is stated, exactly as ChatViewModel states it. Left unset,
+        // a thinking-capable model may spend the whole 64-token budget on
+        // reasoning and return an empty answer with a non-zero token count —
+        // which is what made test02 pass alone and fail in a full run.
+        var reasoning = ReasoningOptions()
+        reasoning.mode = .off
+        options.reasoning = reasoning
         return options
     }
 

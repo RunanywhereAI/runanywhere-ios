@@ -337,25 +337,53 @@ final class EndToEndTests: XCTestCase {
 
     // MARK: - Speech
 
+    /// Every installed speech model, not just the first. A single failure told
+    /// me only "Inference failed" with no way to know which model produced it.
     func test07_transcribesRecordedAudio() async {
-        await step("stt") {
-            let model = try await self.firstInstalled(.speechRecognition)
-            let recording = try self.fixture("Music/meeting.wav")
-            _ = try await RunAnywhere.models.load(id: model.id)
-
-            let transcription = try await RunAnywhere.stt.transcribe(.file(recording))
-            let text = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else {
-                throw E2EProblem("\(model.id) transcribed the recording to nothing")
+        let recording: String
+        let installed: [RAModelInfo]
+        do {
+            recording = try fixture("Music/meeting.wav")
+            let catalog = try await RunAnywhere.models.list()
+            installed = catalog.filter {
+                !$0.localPath.isEmpty && $0.runtimeUnavailableReason == nil
+                    && $0.category == .speechRecognition
             }
-            // The fixture is spoken text about a certificate; a transcript
-            // sharing none of its words is a transcript of something else.
-            let spoken = ["certificate", "password", "monday", "gateway", "friday", "ops"]
-            guard spoken.contains(where: { text.lowercased().contains($0) }) else {
-                throw E2EProblem("transcript matches none of the spoken words: \"\(text.prefix(160))\"")
-            }
-            return "\(model.id) -> \"\(text.prefix(120))\""
+        } catch {
+            report("FAIL stt — \(error)")
+            XCTFail("stt: \(error)")
+            return
         }
+        guard !installed.isEmpty else {
+            report("FAIL stt — no speech model installed")
+            XCTFail("no speech model installed")
+            return
+        }
+
+        // The fixture is spoken text about a certificate; a transcript sharing
+        // none of its words is a transcript of something else.
+        let spoken = ["certificate", "password", "monday", "gateway", "friday", "ops"]
+        var broken: [String] = []
+        for model in installed {
+            do {
+                _ = try await RunAnywhere.models.load(id: model.id)
+                let text = try await RunAnywhere.stt.transcribe(.file(recording)).text
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if text.isEmpty {
+                    report("FAIL stt \(model.id) — transcribed to nothing")
+                    broken.append(model.id)
+                } else if !spoken.contains(where: { text.lowercased().contains($0) }) {
+                    report("FAIL stt \(model.id) — matches none of the spoken words: \"\(text.prefix(120))\"")
+                    broken.append(model.id)
+                } else {
+                    report("PASS stt \(model.id) — \"\(text.prefix(100))\"")
+                }
+            } catch {
+                report("FAIL stt \(model.id) — \(error)")
+                broken.append(model.id)
+            }
+        }
+        XCTAssertTrue(broken.isEmpty, "speech models that could not transcribe: \(broken.joined(separator: ", "))")
     }
 
     func test08_synthesisProducesAudio() async {

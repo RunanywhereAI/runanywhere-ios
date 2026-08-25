@@ -43,12 +43,6 @@ struct MoreHost: View {
             #endif
         case .computerUse: ComputerUseScreen()
         case .benchmarks: BenchmarksScreen()
-        case .connect:
-            #if os(macOS)
-            ConnectScreen()
-            #else
-            EmptyView()
-            #endif
         case .storage: StorageScreen()
         }
     }

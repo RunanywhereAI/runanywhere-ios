@@ -58,23 +58,25 @@ struct ChatComposer: View {
                     model.apply(prompt)
                     isFocused = true
                 }
-                .padding(.top, Space.md)
-                .padding(.bottom, Space.xs)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.md)
                 .id(model.toolsEnabled)
                 .transition(.opacity)
             }
 
             if recording == nil {
-            VStack(spacing: ComposerMetrics.rowSpacing) {
-                strips
-                switchRow
-                editorRow
-                if model.isStopping {
-                    stoppingPill.transition(.composerStrip)
+                VStack(spacing: ComposerMetrics.rowSpacing) {
+                    strips
+                    if model.hasActiveModes {
+                        modeChips.transition(.composerStrip)
+                    }
+                    editorRow
+                    if model.isStopping {
+                        stoppingPill.transition(.composerStrip)
+                    }
                 }
-            }
-            .padding(.horizontal, ComposerMetrics.inset)
-            .padding(.vertical, ComposerMetrics.gap)
+                .padding(.horizontal, ComposerMetrics.inset)
+                .padding(.vertical, Space.md)
             }
         }
         .measured()
@@ -88,10 +90,11 @@ struct ChatComposer: View {
             model.notice ?? "",
             model.staged?.filename ?? "",
             model.stagedDetail,
-            model.toolStatus ?? "",
+            model.toolsUnavailableMessage ?? "",
             model.isStopping ? "stopping" : "",
             model.showsPrompts ? "prompts" : "",
-            model.toolsEnabled ? "tools" : ""
+            model.toolsEnabled ? "tools" : "",
+            model.thinkingEnabled ? "thinking" : ""
         ].joined(separator: "|")
     }
 
@@ -158,17 +161,35 @@ struct ChatComposer: View {
             .transition(.composerStrip)
         }
 
-        if let status = model.toolStatus {
+        if let unavailable = model.toolsUnavailableMessage {
             ComposerStrip(
-                symbol: model.toolsUnavailableMessage == nil ? "globe" : "globe.badge.chevron.backward",
-                tint: model.toolsUnavailableMessage == nil ? AppColors.brand : AppColors.textTertiary,
-                wash: model.toolsUnavailableMessage == nil ? AppColors.brandMuted : AppColors.surfaceMuted,
-                title: model.toolsUnavailableMessage == nil ? "Web and tools on" : "Tools unavailable",
-                detail: status
+                symbol: "globe.badge.chevron.backward",
+                tint: AppColors.textTertiary,
+                wash: AppColors.surfaceMuted,
+                title: "Tools unavailable",
+                detail: unavailable
             ) {
                 EmptyView()
             }
             .transition(.composerStrip)
+        }
+    }
+
+    /// Web and thinking live in the plus menu, so this is the only thing that
+    /// says they are on. Each chip is also how they are turned off again.
+    private var modeChips: some View {
+        HStack(spacing: Space.sm) {
+            if model.toolsEnabled {
+                ModeChip(symbol: "globe", title: "Web search") {
+                    withAnimation(.easeInOut(duration: 0.28)) { model.toolsEnabled = false }
+                }
+            }
+            if model.thinkingEnabled {
+                ModeChip(symbol: "brain", title: "Thinking") {
+                    withAnimation(.easeInOut(duration: 0.28)) { model.thinkingEnabled = false }
+                }
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -186,49 +207,7 @@ struct ChatComposer: View {
         .background(Capsule().fill(AppColors.surfaceMuted))
     }
 
-    private var switchRow: some View {
-        HStack(spacing: ComposerMetrics.gap) {
-            attachmentMenu
-
-            Spacer(minLength: 0)
-
-            ComposerToggle(
-                icon: "globe",
-                isOn: model.toolsEnabled,
-                isEnabled: model.toolsSupported,
-                label: model.toolsLabel
-            ) {
-                withAnimation(.easeInOut(duration: 0.28)) {
-                    model.toolsEnabled.toggle()
-                }
-            }
-
-            ComposerToggle(
-                icon: "mic",
-                isOn: false,
-                isEnabled: true,
-                label: "Talk mode"
-            ) {
-                onAction(.talk)
-            }
-
-            ComposerToggle(
-                icon: "brain",
-                isOn: model.thinkingEnabled,
-                isEnabled: model.thinkingSupported,
-                label: thinkingLabel
-            ) {
-                model.toggleThinking()
-            }
-        }
-    }
-
-    private var thinkingLabel: String {
-        guard model.thinkingSupported else { return "Thinking not supported by current model" }
-        return model.thinkingEnabled ? "Disable thinking" : "Enable thinking"
-    }
-
-    private var attachmentMenu: some View {
+    private var plusMenu: some View {
         Menu {
             Button { onAction(.attachDocument) } label: {
                 Text("Document")
@@ -245,24 +224,32 @@ struct ChatComposer: View {
                 Text("Look with vision")
                 Image(systemName: "eye")
             }
+
+            Divider()
+
+            Toggle(isOn: $model.toolsEnabled) {
+                Label("Search the web", systemImage: "globe")
+            }
+            .disabled(!model.toolsSupported)
+
+            Toggle(isOn: $model.thinkingEnabled) {
+                Label("Think it through", systemImage: "brain")
+            }
+            .disabled(!model.thinkingSupported)
         } label: {
-            Image(systemName: "plus")
-                .glyph(ComposerMetrics.glyph)
-                .foregroundStyle(AppColors.textSecondary)
-                .frame(width: ComposerMetrics.control, height: ComposerMetrics.control)
-                .background(Circle().fill(AppColors.surfaceMuted))
-                .overlay(Circle().strokeBorder(AppColors.border, lineWidth: Stroke.hairline))
-                .contentShape(Circle())
+            ComposerGlyph(symbol: "plus", isEmphasised: model.hasActiveModes)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .accessibilityLabel("Attach")
+        .accessibilityLabel("Attach, and change how the next message runs")
     }
 
     private var editorRow: some View {
         HStack(alignment: .bottom, spacing: ComposerMetrics.gap) {
+            plusMenu
+
             TextField(model.placeholder, text: $model.draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .appType(.body)
@@ -287,6 +274,12 @@ struct ChatComposer: View {
                 // how a turn was sent with no model loaded.
                 .onSubmit { if sendEnabled { onSend() } }
                 .accessibilityLabel("Message input")
+
+            Button { onAction(.talk) } label: {
+                ComposerGlyph(symbol: "mic", isEmphasised: false)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dictate")
 
             sendButton
         }
@@ -320,41 +313,53 @@ struct ChatComposer: View {
     }
 }
 
-struct ComposerToggle: View {
-    let icon: String
-    let isOn: Bool
-    let isEnabled: Bool
-    let label: String
-    let action: () -> Void
-
-    private var tint: Color {
-        guard isEnabled else { return AppColors.textTertiary }
-        return isOn ? AppColors.brand : AppColors.textSecondary
-    }
+/// The round glyph the composer's secondary controls wear.
+struct ComposerGlyph: View {
+    let symbol: String
+    var isEmphasised = false
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .glyph(ComposerMetrics.glyph)
-                .foregroundStyle(tint)
-                .frame(width: ComposerMetrics.control, height: ComposerMetrics.control)
-                .background(Circle().fill(isOn ? AppColors.brandMuted : AppColors.surfaceMuted))
-                .overlay(
-                    Circle().strokeBorder(
-                        isOn ? AppColors.brand.opacity(0.45) : AppColors.border,
-                        lineWidth: Stroke.hairline
-                    )
+        Image(systemName: symbol)
+            .glyph(ComposerMetrics.glyph)
+            .foregroundStyle(isEmphasised ? AppColors.brand : AppColors.textSecondary)
+            .frame(width: ComposerMetrics.control, height: ComposerMetrics.control)
+            .background(Circle().fill(isEmphasised ? AppColors.brandMuted : AppColors.surfaceMuted))
+            .overlay(
+                Circle().strokeBorder(
+                    isEmphasised ? AppColors.brand.opacity(0.45) : AppColors.border,
+                    lineWidth: Stroke.hairline
                 )
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.4)
-        .help(label)
-        .accessibilityLabel(label)
+            )
+            .contentShape(Circle())
     }
 }
 
+struct ModeChip: View {
+    let symbol: String
+    let title: String
+    let onClear: () -> Void
+
+    var body: some View {
+        Button(action: onClear) {
+            HStack(spacing: Space.xs) {
+                Image(systemName: symbol)
+                    .glyph(Glyph.xs - 2, weight: .semibold)
+                Text(title)
+                    .appType(.chip)
+                Image(systemName: "xmark")
+                    .glyph(Glyph.xs - 3, weight: .semibold)
+                    .foregroundStyle(AppColors.brand.opacity(0.6))
+            }
+            .foregroundStyle(AppColors.brand)
+            .padding(.horizontal, Space.sm)
+            .frame(height: Control.tag)
+            .background(Capsule().fill(AppColors.brandMuted))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) is on. Turn it off.")
+    }
+}
 
 struct RecordingState {
     let levels: [Float]

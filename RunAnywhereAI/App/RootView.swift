@@ -15,24 +15,34 @@ struct RootView: View {
     @State private var tab: SideNavTab = .chat
 
     var body: some View {
-        Group {
-            switch screen {
-            case .intro:
-                IntroScreen(bootstrap: bootstrap) {
-                    withAnimation(.easeOut(duration: 0.28)) { screen = .home }
+        ZStack {
+            // The two trees cross-fade, and a fade between translucent halves
+            // would show the window through them. This is the opaque ground
+            // they fade over.
+            AppColors.background
+                .ignoresSafeArea()
+
+            Group {
+                switch screen {
+                case .intro:
+                    IntroScreen(bootstrap: bootstrap) {
+                        withAnimation(.easeOut(duration: 0.28)) { screen = .home }
+                    }
+                case .home:
+                    HomeScreen(store: store, tab: $tab)
+                        .task { await store.refresh() }
                 }
-            case .home:
-                HomeScreen(store: store, tab: $tab)
-                    .task { await store.refresh() }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppColors.background)
+            .environment(store)
+            .environment(settings)
+            // The design tokens are read statically rather than through the
+            // environment, so nothing observes them. Keying the tree on the mode
+            // is what turns a token change into a redraw.
+            .id(settings.mode)
+            .transition(.opacity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColors.background)
-        .environment(store)
-        .environment(settings)
-        // The design tokens are read statically rather than through the
-        // environment, so nothing observes them. Keying the tree on the mode
-        // is what turns a token change into a redraw.
-        .id(settings.mode)
+        .animation(Motion.fade, value: settings.mode)
     }
 }

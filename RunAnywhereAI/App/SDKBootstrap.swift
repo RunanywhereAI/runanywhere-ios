@@ -56,12 +56,28 @@ final class SDKBootstrap {
             return
         }
 
+        await AppTools.registerAll()
+        phase = .running(0.45)
+
         await ModelCatalogBootstrap.registerAll(mlxRegistered: mlxRegistered)
+        reportAppleFoundationAvailability()
         phase = .running(0.90)
 
         await RunAnywhere.models.refresh()
         phase = .running(1)
         phase = .ready
+    }
+
+    /// Read once at startup so "Apple's model does nothing" is answerable from
+    /// the log alone, without reproducing it. The screens re-read it per
+    /// catalog refresh rather than caching this, so turning Apple Intelligence
+    /// on mid-session still takes effect.
+    private func reportAppleFoundationAvailability() {
+        if let reason = HardwareTierResolver().appleFoundationUnavailableReason {
+            logger.info("Apple built-in model unavailable: \(reason, privacy: .public)")
+        } else {
+            logger.info("Apple built-in model is available")
+        }
     }
 
     private func registerBackends() -> Bool {

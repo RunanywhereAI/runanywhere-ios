@@ -3,9 +3,10 @@ import Foundation
 /// Who the app is being for right now.
 ///
 /// Two audiences share one binary: someone using the product, and someone
-/// building on the SDK who needs the diagnostic screens. Rather than hide the
-/// difference, the app says which one it is in the only way that reads at a
-/// glance — the colour of its chrome.
+/// building on the SDK who needs the diagnostic screens. User mode shows chat,
+/// models and settings; developer mode adds the SDK hub to the sidebar and a
+/// diagnostics section to Settings, and says which one is in force in the only
+/// way that reads at a glance — the colour of its chrome.
 enum AppMode: String, CaseIterable, Identifiable {
     case user
     case developer
@@ -21,8 +22,8 @@ enum AppMode: String, CaseIterable, Identifiable {
 
     var caption: String {
         switch self {
-        case .user: "Chat, models and settings."
-        case .developer: "Adds the SDK screens, and shifts the theme so you can tell at a glance."
+        case .user: "Just the product: chat, models and settings."
+        case .developer: "Adds the SDK screens and their diagnostics, and cools the theme so a screenshot says which mode it came from."
         }
     }
 

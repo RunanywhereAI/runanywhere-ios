@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// The hub for everything outside chat, models and settings.
+/// The hub for the SDK screens, reachable in developer mode only.
 ///
 /// A grid rather than a list: these are destinations you pick between, not a
 /// sequence you read down, and a caption under each one is what stops the
 /// diagnostic screens looking interchangeable.
 struct MoreScreen: View {
-    @Environment(AppSettings.self) private var settings
-
     @Binding var destination: MoreDestination?
 
     private var groups: [MoreDestination.Group] {
-        let available = MoreDestination.available(for: settings.mode)
-        return MoreDestination.Group.allCases.filter { group in
-            available.contains { $0.group == group }
+        MoreDestination.Group.allCases.filter { group in
+            MoreDestination.available.contains { $0.group == group }
         }
     }
 
@@ -22,10 +19,6 @@ struct MoreScreen: View {
             VStack(alignment: .leading, spacing: Space.xl) {
                 ForEach(groups) { group in
                     section(group)
-                }
-
-                if settings.mode == .user {
-                    developerHint
                 }
             }
             .padding(.horizontal, Space.lg)
@@ -36,7 +29,7 @@ struct MoreScreen: View {
     }
 
     private func section(_ group: MoreDestination.Group) -> some View {
-        let items = MoreDestination.available(for: settings.mode).filter { $0.group == group }
+        let items = MoreDestination.available.filter { $0.group == group }
         return VStack(alignment: .leading, spacing: Space.md) {
             Text(group.title)
                 .appType(.overline)
@@ -80,18 +73,5 @@ struct MoreScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private var developerHint: some View {
-        HStack(spacing: Space.sm) {
-            Image(systemName: "hammer")
-                .glyph(Glyph.xs)
-                .foregroundStyle(AppColors.textTertiary)
-            Text("More tools are available in developer mode, in Settings.")
-                .appType(.meta)
-                .foregroundStyle(AppColors.textTertiary)
-            Spacer(minLength: 0)
-        }
-        .padding(.top, Space.sm)
     }
 }

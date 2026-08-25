@@ -21,11 +21,15 @@ enum SideNavTab: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    static var available: [SideNavTab] {
+    /// The tabs that own the sidebar's list. Everything else is a destination
+    /// reached from the footer: Manage Models is a place you go twice, once to
+    /// download and once when something is wrong, and it does not earn a row
+    /// above the conversations.
+    static var libraries: [SideNavTab] {
         #if os(macOS)
-        [.chat, .workflow, .models]
+        [.chat, .workflow]
         #else
-        [.chat, .models]
+        [.chat]
         #endif
     }
 
@@ -55,14 +59,6 @@ enum SideNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "Search chats"
         case .workflow: "Search workflows"
-        case .models, .more, .settings: ""
-        }
-    }
-
-    var sectionTitle: String {
-        switch self {
-        case .chat: "Recent"
-        case .workflow: "Workflows"
         case .models, .more, .settings: ""
         }
     }
@@ -139,14 +135,28 @@ struct SideNav<Content: View>: View {
     private let expandedWidth: CGFloat = 300
     private let railWidth: CGFloat = 56
 
+    /// Which library the list is showing. The footer destinations — Manage
+    /// Models, Settings, the SDK hub — have no library of their own, and an
+    /// empty sidebar there would strand the reader with no way back, so the
+    /// conversations stay put and picking one returns to chat.
+    private var libraryTab: SideNavTab {
+        tab.hasLibrary ? tab : .chat
+    }
+
     private var source: [DrawerEntry] {
-        tab == .chat ? chats : workflows
+        libraryTab == .chat ? chats : workflows
     }
 
     private var filtered: [DrawerEntry] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return source }
         return source.filter { $0.title.localizedCaseInsensitiveContains(trimmed) }
+    }
+
+    /// Searching a handful of conversations is slower than reading them, so the
+    /// field arrives only once the list is long enough to need it.
+    private var showsSearch: Bool {
+        source.count >= 8 || !query.isEmpty
     }
 
     var body: some View {
@@ -204,26 +214,18 @@ struct SideNav<Content: View>: View {
     private var expanded: some View {
         VStack(spacing: 0) {
             header
-            tabCards
 
-            if tab.hasLibrary {
-                search
-                newButton
-
-                Text(tab.sectionTitle)
-                    .appType(.overline)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .textCase(.uppercase)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Space.lg)
-                    .padding(.top, Space.sm)
-                    .id(tab)
-                    .transition(.opacity)
-
-                list
-            } else {
-                Spacer(minLength: 0)
+            if SideNavTab.libraries.count > 1 {
+                librarySwitcher
             }
+
+            newButton
+
+            if showsSearch {
+                search.transition(.opacity)
+            }
+
+            list
 
             Divider().overlay(AppColors.border)
 
@@ -234,6 +236,38 @@ struct SideNav<Content: View>: View {
             }
             .padding(.bottom, footerBottomInset)
         }
+        .animation(.easeInOut(duration: 0.2), value: showsSearch)
+    }
+
+    private var librarySwitcher: some View {
+        HStack(spacing: Space.hair) {
+            ForEach(SideNavTab.libraries) { item in
+                let isActive = tab == item
+                Button { select(item) } label: {
+                    Text(item.title)
+                        .appType(.meta)
+                        .fontWeight(isActive ? .semibold : .regular)
+                        .foregroundStyle(isActive ? AppColors.textPrimary : AppColors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 26)
+                        .background(
+                            RoundedRectangle(cornerRadius: Radius.xs, style: .continuous)
+                                .fill(isActive ? AppColors.surface : .clear)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.title)
+                .accessibilityAddTraits(isActive ? .isSelected : [])
+            }
+        }
+        .padding(Space.hair)
+        .background(
+            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+                .fill(AppColors.background)
+        )
+        .padding(.horizontal, Space.lg)
+        .padding(.bottom, Space.md)
     }
 
     private var footerBottomInset: CGFloat {
@@ -245,14 +279,18 @@ struct SideNav<Content: View>: View {
     }
 
     private var newButton: some View {
-        Button(action: onNew) {
+        Button {
+            dismissOnPhone()
+            onNew()
+        } label: {
             HStack(spacing: Space.sm) {
-                Image(systemName: "plus")
+                Image(systemName: "square.and.pencil")
                     .glyph(Glyph.xs, weight: .semibold)
                     .frame(width: Glyph.lg)
 
-                Text(tab.newTitle)
+                Text(libraryTab.newTitle)
                     .appType(.secondary)
+                    .fontWeight(.medium)
 
                 Spacer(minLength: 0)
             }
@@ -263,67 +301,14 @@ struct SideNav<Content: View>: View {
                 RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
                     .fill(AppColors.brandMuted)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                    .strokeBorder(
-                        AppColors.brand.opacity(0.55),
-                        style: StrokeStyle(lineWidth: Stroke.regular, dash: [4, 3])
-                    )
-            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tab.newTitle)
+        .accessibilityLabel(libraryTab.newTitle)
         .padding(.horizontal, Space.lg)
-        .padding(.bottom, Space.sm)
-        .id(tab)
+        .padding(.bottom, Space.md)
+        .id(libraryTab)
         .transition(.opacity)
-    }
-
-    private var tabCards: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(SideNavTab.available.enumerated()), id: \.element.id) { index, item in
-                if index > 0 {
-                    Divider().overlay(AppColors.border)
-                }
-                tabCard(item)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(AppColors.border, lineWidth: Stroke.hairline)
-        )
-        .padding(.horizontal, Space.lg)
-        .padding(.bottom, Space.xl)
-    }
-
-    private func tabCard(_ item: SideNavTab) -> some View {
-        let isActive = tab == item
-        return Button {
-            select(item)
-        } label: {
-            HStack(spacing: Space.md) {
-                Image(systemName: item.symbol)
-                    .glyph(Glyph.xs)
-                    .foregroundStyle(isActive ? AppColors.onBrand : AppColors.textSecondary)
-                    .frame(width: Glyph.lg)
-
-                Text(item.title)
-                    .appType(.secondary)
-                    .fontWeight(isActive ? .semibold : .regular)
-                    .foregroundStyle(isActive ? AppColors.onBrand : AppColors.textPrimary)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, Space.md)
-            .frame(height: 36)
-            .background(isActive ? AppColors.brandSelected : AppColors.surface)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(item.title)
-        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
     private func select(_ item: SideNavTab) {
@@ -334,6 +319,14 @@ struct SideNav<Content: View>: View {
         }
     }
 
+    /// The Mac sidebar is persistent; the phone's drawer is over the content
+    /// and has to get out of the way once it has been used.
+    private func dismissOnPhone() {
+        #if !os(macOS)
+        isOpen = false
+        #endif
+    }
+
     private var rail: some View {
         VStack(spacing: Space.xs) {
             railButton(symbol: "sidebar.left", title: "Expand sidebar", isSelected: false) {
@@ -341,27 +334,33 @@ struct SideNav<Content: View>: View {
             }
             .frame(height: Measure.barHeight)
 
-            ForEach(SideNavTab.available) { item in
-                railButton(symbol: item.symbol, title: item.title, isSelected: tab == item, size: Glyph.sm) {
-                    select(item)
+            if SideNavTab.libraries.count > 1 {
+                ForEach(SideNavTab.libraries) { item in
+                    railButton(symbol: item.symbol, title: item.title, isSelected: tab == item, size: Glyph.sm) {
+                        select(item)
+                    }
                 }
             }
 
-            if tab.hasLibrary {
-                    railButton(symbol: "plus", title: tab.newTitle, isSelected: false, size: Glyph.sm, action: onNew)
-            }
+            railButton(
+                symbol: "square.and.pencil",
+                title: libraryTab.newTitle,
+                isSelected: false,
+                size: Glyph.sm,
+                action: onNew
+            )
 
             Divider().overlay(AppColors.border)
 
             ScrollView {
                 VStack(spacing: Space.xs) {
-                    ForEach(tab.hasLibrary ? source : []) { entry in
+                    ForEach(source) { entry in
                         railButton(
                             symbol: entry.symbol,
                             title: entry.title,
                             isSelected: selection == entry.id
                         ) {
-                            selection = entry.id
+                            open(entry)
                         }
                     }
                 }
@@ -440,11 +439,11 @@ struct SideNav<Content: View>: View {
                 .glyph(Glyph.sm)
                 .foregroundStyle(AppColors.textSecondary)
 
-            TextField(tab.searchPrompt, text: $query)
+            TextField(libraryTab.searchPrompt, text: $query)
                 .textFieldStyle(.plain)
                 .appType(.secondary)
                 .foregroundStyle(AppColors.textPrimary)
-                .id(tab)
+                .id(libraryTab)
                 .transition(.opacity)
 
             if !query.isEmpty {
@@ -481,8 +480,17 @@ struct SideNav<Content: View>: View {
             .padding(.horizontal, Space.sm)
             .padding(.top, Space.xs)
         }
-        .id(tab)
+        .id(libraryTab)
         .transition(.opacity)
+    }
+
+    /// Only the selection is set here. Leaving a footer destination for the
+    /// conversation just picked is the host's job: it has to adopt the
+    /// transcript in the same step it switches tab, because the chat screen is
+    /// rebuilt by that switch and its own watcher never sees the change.
+    private func open(_ entry: DrawerEntry) {
+        dismissOnPhone()
+        selection = entry.id
     }
 
     @ViewBuilder
@@ -499,7 +507,7 @@ struct SideNav<Content: View>: View {
         let isHovered = hovered == entry.id
 
         return Button {
-            selection = entry.id
+            open(entry)
         } label: {
             HStack(spacing: Space.xs) {
                 Text(entry.title)
@@ -615,36 +623,36 @@ struct SideNav<Content: View>: View {
 
     private var empty: some View {
         EmptyState(
-            symbol: query.isEmpty ? tab.symbol : "magnifyingglass",
-            title: query.isEmpty ? tab.emptyTitle : "Nothing found",
-            detail: query.isEmpty ? tab.emptyDetail : "Try a different keyword."
+            symbol: query.isEmpty ? libraryTab.symbol : "magnifyingglass",
+            title: query.isEmpty ? libraryTab.emptyTitle : "Nothing found",
+            detail: query.isEmpty ? libraryTab.emptyDetail : "Try a different keyword."
         )
     }
 
     private func footerRow(_ item: DrawerFooterItem) -> some View {
-        Button {
+        let isActive = tab.rawValue == item.id
+        return Button {
+            dismissOnPhone()
             onFooter(item.id)
         } label: {
             HStack(spacing: Space.md) {
                 Image(systemName: item.symbol)
                     .glyph(Glyph.sm, weight: .semibold)
-                    .foregroundStyle(AppColors.textSecondary)
+                    .foregroundStyle(isActive ? AppColors.brand : AppColors.textSecondary)
                     .frame(width: Glyph.lg)
 
                 Text(item.title)
                     .appType(.secondary)
-                    .foregroundStyle(AppColors.textPrimary)
+                    .fontWeight(isActive ? .semibold : .regular)
+                    .foregroundStyle(isActive ? AppColors.brand : AppColors.textPrimary)
 
                 Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .glyph(Glyph.sm)
-                    .foregroundStyle(AppColors.textTertiary)
             }
             .padding(.horizontal, Space.lg)
             .padding(.vertical, Space.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 }

@@ -1,6 +1,12 @@
 import SwiftUI
 
-/// Everything the app can do that is not chat, models or settings.
+/// The SDK screens: every diagnostic surface that exists to show a builder what
+/// a modality does.
+///
+/// None of these ship to someone who came to chat, so the whole hub is gated on
+/// developer mode and the sidebar drops it in user mode. Connect used to live
+/// here and now sits in Settings, because it is the one thing on this list a
+/// reader would look for.
 ///
 /// Grouped the way the old Advanced hub grouped them, because the grouping was
 /// the one part of that screen worth keeping: people look for "the voice one"
@@ -15,7 +21,6 @@ enum MoreDestination: String, CaseIterable, Identifiable {
     case segmentation
     case computerUse
     case benchmarks
-    case connect
     case storage
 
     var id: String { rawValue }
@@ -31,7 +36,6 @@ enum MoreDestination: String, CaseIterable, Identifiable {
         case .segmentation: "Segmentation"
         case .computerUse: "Computer Use"
         case .benchmarks: "Benchmarks"
-        case .connect: "Connect"
         case .storage: "Storage"
         }
     }
@@ -47,7 +51,6 @@ enum MoreDestination: String, CaseIterable, Identifiable {
         case .segmentation: "Label every region of an image"
         case .computerUse: "Reason over a screenshot and pick an action"
         case .benchmarks: "Measure every downloaded model on this device"
-        case .connect: "Share this Mac's models over the network"
         case .storage: "See what models are using, and reclaim it"
         }
     }
@@ -63,7 +66,6 @@ enum MoreDestination: String, CaseIterable, Identifiable {
         case .segmentation: "square.on.square.dashed"
         case .computerUse: "cursorarrow.rays"
         case .benchmarks: "gauge.with.dots.needle.bottom.50percent"
-        case .connect: "antenna.radiowaves.left.and.right"
         case .storage: "internaldrive"
         }
     }
@@ -91,20 +93,7 @@ enum MoreDestination: String, CaseIterable, Identifiable {
         case .talk, .transcribe, .readAloud, .voiceActivity, .diarization: .voice
         case .vision, .segmentation: .vision
         case .computerUse: .agents
-        case .benchmarks, .connect, .storage: .device
-        }
-    }
-
-    /// Whether this belongs in front of someone who is not building on the SDK.
-    ///
-    /// The diagnostic screens are genuinely useful and genuinely confusing; a
-    /// reader who came for a chat app should not meet a segmentation mask.
-    var isDeveloperOnly: Bool {
-        switch self {
-        case .talk, .transcribe, .readAloud, .vision: false
-        case .voiceActivity, .diarization, .segmentation, .computerUse, .benchmarks, .connect,
-             .storage:
-            true
+        case .benchmarks, .storage: .device
         }
     }
 
@@ -118,19 +107,12 @@ enum MoreDestination: String, CaseIterable, Identifiable {
             #else
             false
             #endif
-        case .connect:
-            // Hosting is the Mac side of Connect; the iOS client lives in chat.
-            #if os(macOS)
-            true
-            #else
-            false
-            #endif
         default:
             true
         }
     }
 
-    static func available(for mode: AppMode) -> [MoreDestination] {
-        allCases.filter { $0.isAvailable && (mode == .developer || !$0.isDeveloperOnly) }
+    static var available: [MoreDestination] {
+        allCases.filter(\.isAvailable)
     }
 }

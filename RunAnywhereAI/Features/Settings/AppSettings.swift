@@ -1,7 +1,5 @@
 import SwiftUI
 import Observation
-import RunAnywhere
-import os
 
 enum AppTheme: String, CaseIterable, Identifiable {
     case system
@@ -49,13 +47,6 @@ final class AppSettings {
         }
     }
 
-    private(set) var usedBytes: Int64 = 0
-    private(set) var freeBytes: Int64 = 0
-    private(set) var isBusy = false
-    var lastError: String?
-
-    private let logger = Logger(subsystem: "com.runanywhere.RunAnywhereAI", category: "Settings")
-
     private enum Key {
         static let theme = "app.theme"
         static let mode = "app.mode"
@@ -71,26 +62,6 @@ final class AppSettings {
         // Before any view reads a token, so the first frame is already the
         // right colour rather than flashing the default palette.
         AppColors.mode = restored
-    }
-
-    func refreshStorage() async {
-        let state = await RunAnywhere.models.state()
-        usedBytes = state.storageUsedBytes
-        freeBytes = state.storageFreeBytes
-    }
-
-    func clearCache() async {
-        isBusy = true
-        defer { isBusy = false }
-        do {
-            try await RunAnywhere.clearCache()
-            try await RunAnywhere.cleanTempFiles()
-            await refreshStorage()
-            lastError = nil
-        } catch {
-            logger.error("cache clear failed: \(error, privacy: .public)")
-            lastError = String(describing: error)
-        }
     }
 
     static func format(_ bytes: Int64) -> String {

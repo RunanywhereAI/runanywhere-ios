@@ -17,6 +17,7 @@ struct HomeScreen: View {
     @State private var selection = ""
     @Binding var tab: SideNavTab
     @State private var moreDestination: MoreDestination?
+    @State private var isConnectOpen = false
     @State private var modelState: ModelState = .none
     @State private var activeModelID: String?
     @State private var showModelPicker = false
@@ -26,15 +27,28 @@ struct HomeScreen: View {
     @State private var dictation = DictationController()
     @State private var defaults = DefaultModels()
     @State private var conversations = ConversationStore()
+    @State private var workflowEditor = WorkflowEditorViewModel()
+    @State private var isPickingWorkflowTemplate = false
     @Environment(AppSettings.self) private var settings
     @State private var importing: AttachmentImport?
 
-    private let workflows: [DrawerEntry] = []
+    /// The saved-workflow library, read straight off the editor so the
+    /// sidebar and the canvas can never disagree about what exists.
+    private var workflows: [DrawerEntry] {
+        workflowEditor.savedWorkflows.map { DrawerEntry(id: $0.id, title: $0.name) }
+    }
 
-    private let footer = [
-        DrawerFooterItem(id: "more", title: "More", symbol: "square.grid.2x2"),
-        DrawerFooterItem(id: "settings", title: "Settings", symbol: "gearshape.fill")
-    ]
+    /// In user mode the SDK hub is gone and Connect has moved into Settings,
+    /// which leaves the hub with nothing a reader would open — so the row goes
+    /// too rather than leading to an empty grid.
+    private var footer: [DrawerFooterItem] {
+        var items = [DrawerFooterItem(id: "models", title: "Manage Models", symbol: "square.stack.3d.up")]
+        if settings.mode == .developer {
+            items.append(DrawerFooterItem(id: "more", title: "More", symbol: "square.grid.2x2"))
+        }
+        items.append(DrawerFooterItem(id: "settings", title: "Settings", symbol: "gearshape.fill"))
+        return items
+    }
 
     var body: some View {
         SideNav(
@@ -44,9 +58,25 @@ struct HomeScreen: View {
             footer: footer,
             selection: $selection,
             tab: $tab,
-            onNew: newConversation,
-            onDelete: { conversations.delete(id: $0) },
-            onRename: { conversations.rename(id: $0, to: $1) },
+            onNew: { tab == .workflow ? pickWorkflowTemplate() : newConversation() },
+            onDelete: { id in
+                if tab == .workflow {
+                    Task { await workflowEditor.delete(id: id) }
+                } else {
+                    conversations.delete(id: id)
+                }
+            },
+            onRename: { id, title in
+                if tab == .workflow {
+                    // Renaming the open workflow is a save; the editor owns
+                    // the name and there is no rename-in-place verb.
+                    guard id == workflowEditor.workflowID else { return }
+                    workflowEditor.workflowName = title
+                    Task { await workflowEditor.save() }
+                } else {
+                    conversations.rename(id: id, to: title)
+                }
+            },
             onFooter: openFooter
         ) {
             screen
@@ -54,6 +84,26 @@ struct HomeScreen: View {
                 .transition(.opacity)
         }
         .preferredColorScheme(settings.theme.colorScheme)
+        .task(id: tab) {
+            guard tab == .workflow else { return }
+            await workflowEditor.refreshLibrary()
+            selection = workflowEditor.workflowID
+        }
+        .onChange(of: selection) { _, id in
+            guard !id.isEmpty else { return }
+            if tab == .workflow {
+                // Guard against reloading the open one, or an in-flight edit
+                // is thrown away on every redraw.
+                guard id != workflowEditor.workflowID else { return }
+                Task { await workflowEditor.load(id: id) }
+            } else if tab != .chat {
+                // Picking a conversation from a footer destination is how the
+                // reader gets back to chat; `ChatBindings` is not mounted yet,
+                // so the transcript is adopted here rather than by its watcher.
+                openConversation(id)
+            }
+        }
+        .workflowTemplatePicker(isPresented: $isPickingWorkflowTemplate, onPick: newWorkflow)
         .fileImporter(
             isPresented: Binding(get: { importing != nil }, set: { if !$0 { importing = nil } }),
             allowedContentTypes: importing == .image ? AttachmentLoader.imageTypes : AttachmentLoader.documentTypes,
@@ -84,7 +134,27 @@ struct HomeScreen: View {
         }
     }
 
+    /// Chat is not drawn at all until something can hold a conversation; until
+    /// then the download gate has the screen.
+    @ViewBuilder
     private var chatScreen: some View {
+        if store.hasChatCapableModel {
+            liveChatScreen
+        } else {
+            Scaffold {
+                TopBar(title: "Chat", leading: leading)
+            } content: {
+                ChatFirstRunView(
+                    store: store,
+                    shortlist: store.chatShortlist,
+                    onReady: adoptDownloaded,
+                    onBrowseModels: { withAnimation(.easeInOut(duration: 0.2)) { tab = .models } }
+                )
+            }
+        }
+    }
+
+    private var liveChatScreen: some View {
         Scaffold {
             chatTopBar
         } content: {
@@ -123,12 +193,7 @@ struct HomeScreen: View {
     @ViewBuilder
     private var chatBody: some View {
         if chat.isEmpty {
-            EmptyState(
-                symbol: "bubble.left.and.bubble.right",
-                title: "Ask anything",
-                detail: "Everything runs on this device. Pick a model above to begin."
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ChatWelcome()
         } else {
             ChatTranscript(
                 turns: chat.visibleTurns,
@@ -141,12 +206,12 @@ struct HomeScreen: View {
     }
 
     /// The node-graph editor is a pointer-and-keyboard tool, so it ships on Mac
-    /// only; `SideNavTab.available` already keeps the tab off iOS, which leaves
+    /// only; `SideNavTab.libraries` already keeps the tab off iOS, which leaves
     /// the other branch unreachable rather than merely unused.
     @ViewBuilder
     private var workflowScreen: some View {
         #if os(macOS)
-        WorkflowScreen()
+        WorkflowScreen(viewModel: workflowEditor)
         #else
         Scaffold {
             TopBar(title: "Workflow", leading: leading)
@@ -196,23 +261,63 @@ struct HomeScreen: View {
         )
     }
 
+    /// Connect is pushed from Settings rather than living in the More hub: it
+    /// is the one non-chat screen a reader would go looking for, and Settings
+    /// is the only place both modes can reach.
     private var settingsScreen: some View {
         Scaffold {
-            TopBar(title: "Settings", leading: leading)
+            TopBar(title: isConnectOpen ? "Connect" : "Settings", leading: settingsLeading)
         } content: {
-            SettingsScreen(
-                settings: settings,
-                defaults: defaults,
-                store: store,
-                onManageModels: { withAnimation(.easeInOut(duration: 0.2)) { tab = .models } }
-            )
+            settingsContent
         }
+    }
+
+    @ViewBuilder
+    private var settingsContent: some View {
+        #if os(macOS)
+        if isConnectOpen {
+            ConnectScreen()
+        } else {
+            settingsForm
+        }
+        #else
+        settingsForm
+        #endif
+    }
+
+    private var settingsForm: some View {
+        SettingsScreen(
+            settings: settings,
+            defaults: defaults,
+            store: store,
+            onManageModels: { withAnimation(Motion.fade) { tab = .models } },
+            onOpenConnect: { withAnimation(Motion.quick) { isConnectOpen = true } },
+            onOpenDeveloperTools: {
+                withAnimation(Motion.fade) {
+                    moreDestination = nil
+                    tab = .more
+                }
+            }
+        )
+    }
+
+    private var settingsLeading: AnyView? {
+        guard isConnectOpen else { return leading }
+        return AnyView(
+            BarButton(systemImage: "chevron.left") {
+                withAnimation(Motion.quick) { isConnectOpen = false }
+            }
+        )
     }
 
     // MARK: - Model badge
 
     private var modelBadge: some View {
-        ModelBadge(state: modelState) { showModelPicker.toggle() }
+        ModelBadge(
+            state: modelState,
+            style: .quiet,
+            showsBackend: settings.mode == .developer
+        ) { showModelPicker.toggle() }
             .modelPicker(
                 isPresented: $showModelPicker,
                 models: store.installed.filter { $0.purpose == .language || $0.purpose == .vision },
@@ -226,18 +331,26 @@ struct HomeScreen: View {
         activeModelID = model.id
         defaults.llmID = model.id
         applyCapabilities(of: model)
-        withAnimation(.easeInOut(duration: 0.2)) { modelState = .loading(model.name, 0.1) }
+        withAnimation(.easeInOut(duration: 0.2)) { modelState = .loading(model.label, 0.1) }
         Task {
             do {
                 try await store.load(model.id)
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    modelState = .loaded(model.name, model.backend)
+                    modelState = .loaded(model.label, model.backend)
                 }
-                chat.loadedModelName = model.name
+                chat.loadedModelName = model.label
             } catch {
                 withAnimation(.easeInOut(duration: 0.25)) { modelState = .none }
             }
         }
+    }
+
+    /// A model the reader just downloaded from the first-run gate is the one
+    /// they want to talk to, so it is selected and loaded rather than left for
+    /// them to find in the picker.
+    private func adoptDownloaded(_ id: String) {
+        guard let model = store.models.first(where: { $0.id == id }) else { return }
+        select(model)
     }
 
     private func adoptLoaded(_ model: InstalledModel?) {
@@ -245,7 +358,7 @@ struct HomeScreen: View {
         activeModelID = model.id
         applyCapabilities(of: model)
         withAnimation(.easeInOut(duration: 0.2)) {
-            modelState = .loaded(model.name, model.backend)
+            modelState = .loaded(model.label, model.backend)
         }
     }
 
@@ -255,6 +368,7 @@ struct HomeScreen: View {
             composer.thinkingSupported = false
             composer.hasModel = false
             composer.toolsSupported = false
+            chat.modelIsVision = false
             return
         }
         applyCapabilities(of: model)
@@ -262,9 +376,15 @@ struct HomeScreen: View {
 
     private func applyCapabilities(of model: InstalledModel) {
         withAnimation(.easeInOut(duration: 0.2)) {
-            composer.thinkingSupported = model.supportsThinking
+            let isVision = model.purpose == .vision
+            // A vision model answers through the VLM component, and reasoning
+            // has no carrier there: rac_vlm_options_t has no thinking field and
+            // the adapter never reads ReasoningOptions, so the toggle would be
+            // a control that does nothing. Hide it rather than lie about it.
+            composer.thinkingSupported = model.supportsThinking && !isVision
             chat.modelContextLength = model.contextLength
             chat.modelBackend = model.backend
+            chat.modelIsVision = isVision
             chat.loadedModelID = model.id
             composer.hasModel = true
             composer.toolsSupported = model.supportsTools
@@ -272,7 +392,7 @@ struct HomeScreen: View {
                 composer.toolsEnabled = false
                 chat.toolsEnabled = false
             }
-            if !model.supportsThinking {
+            if !composer.thinkingSupported {
                 composer.thinkingEnabled = false
                 chat.thinkingEnabled = false
             }
@@ -283,6 +403,25 @@ struct HomeScreen: View {
 
     private var chatEntries: [DrawerEntry] {
         conversations.conversations.map { DrawerEntry(id: $0.id, title: $0.title) }
+    }
+
+    private func pickWorkflowTemplate() {
+        isPickingWorkflowTemplate = true
+    }
+
+    private func newWorkflow(from template: WorkflowTemplate?) {
+        withAnimation(Motion.quick) {
+            workflowEditor.newWorkflow(from: template)
+            selection = workflowEditor.workflowID
+        }
+    }
+
+    private func openConversation(_ id: String) {
+        conversations.select(id)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            chat.adopt(conversations.turns(for: id))
+            tab = .chat
+        }
     }
 
     private func newConversation() {
@@ -298,6 +437,7 @@ struct HomeScreen: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             switch id {
             case "settings": tab = .settings
+            case "models": tab = .models
             case "more":
                 // Always land on the hub rather than whatever was open last;
                 // a footer item that reopens a sub-screen reads as broken.
@@ -355,7 +495,7 @@ struct HomeScreen: View {
     /// here rather than left to fail inside the SDK as a native error.
     private func sendBlocker() -> String? {
         guard activeModelID != nil, composer.hasModel else {
-            return "Choose a chat model from the pill above before sending."
+            return "Choose a model at the top of the screen before sending."
         }
         if let staged = composer.staged {
             if staged.isImage {
@@ -382,7 +522,9 @@ struct HomeScreen: View {
             isPaused: dictation.isPaused,
             elapsed: dictation.elapsed,
             transcript: dictation.partial,
-            diagnostics: "\(dictation.chunks) chunks · \(dictation.bytes / 1024) KB · \(dictation.eventsSeen) events",
+            diagnostics: settings.mode == .developer
+                ? "\(dictation.chunks) chunks · \(dictation.bytes / 1024) KB · \(dictation.eventsSeen) events"
+                : "",
             onPauseResume: { dictation.togglePause() },
             onDiscard: { withAnimation(.easeOut(duration: 0.2)) { dictation.discard() } },
             onFinish: { withAnimation(.easeOut(duration: 0.2)) { dictation.finish() } }

@@ -1,12 +1,14 @@
 import SwiftUI
 
+/// A suggestion the reader finishes rather than a card they read.
+///
+/// `verb` is what the sentence starts with and `continuation` is where it was
+/// going; `text` is the full prompt the field is seeded with.
 struct StarterPrompt: Identifiable, Hashable {
     let id: String
-    let icon: String
-    let title: String
-    let subtitle: String
+    let verb: String
+    let continuation: String
     let text: String
-    let tint: PromptTint
 
     static func set(toolsEnabled: Bool) -> [StarterPrompt] {
         toolsEnabled ? tools : general
@@ -15,150 +17,75 @@ struct StarterPrompt: Identifiable, Hashable {
     static let general: [StarterPrompt] = [
         StarterPrompt(
             id: "plan",
-            icon: "checklist",
-            title: "Plan my day",
-            subtitle: "Turn a messy list into priorities",
-            text: "Turn this messy list into a realistic plan with the top three priorities:",
-            tint: .brand
-        ),
-        StarterPrompt(
-            id: "rewrite",
-            icon: "text.quote",
-            title: "Rewrite clearly",
-            subtitle: "Clear, warm and concise",
-            text: "Rewrite this so it is clear, warm, and concise:",
-            tint: .info
-        ),
-        StarterPrompt(
-            id: "compare",
-            icon: "arrow.left.arrow.right",
-            title: "Compare options",
-            subtitle: "Trade-offs side by side",
-            text: "Compare these options and tell me the trade-offs of each:",
-            tint: .success
-        ),
-        StarterPrompt(
-            id: "summarize",
-            icon: "doc.text.magnifyingglass",
-            title: "Summarize notes",
-            subtitle: "Decisions and action items",
-            text: "Summarize these notes into decisions, action items, and open questions:",
-            tint: .info
+            verb: "Plan",
+            continuation: "a realistic day",
+            text: "Turn this messy list into a realistic plan with the top three priorities:"
         ),
         StarterPrompt(
             id: "explain",
-            icon: "lightbulb",
-            title: "Explain simply",
-            subtitle: "Plain language, no jargon",
-            text: "Explain this in plain language, without jargon:",
-            tint: .brand
+            verb: "Explain",
+            continuation: "something confusing",
+            text: "Explain this in plain language, without jargon:"
         ),
         StarterPrompt(
-            id: "debug",
-            icon: "ladybug",
-            title: "Find the bug",
-            subtitle: "Read code and spot the fault",
-            text: "Read this code, find the bug, and explain why it fails:",
-            tint: .danger
+            id: "rewrite",
+            verb: "Rewrite",
+            continuation: "this more clearly",
+            text: "Rewrite this so it is clear, warm, and concise:"
+        ),
+        StarterPrompt(
+            id: "summarize",
+            verb: "Summarize",
+            continuation: "a page of notes",
+            text: "Summarize these notes into decisions, action items, and open questions:"
         ),
         StarterPrompt(
             id: "draft",
-            icon: "envelope",
-            title: "Draft a reply",
-            subtitle: "Short and appropriate",
-            text: "Draft a short, appropriate reply to this message:",
-            tint: .success
-        ),
-        StarterPrompt(
-            id: "brainstorm",
-            icon: "sparkles",
-            title: "Brainstorm",
-            subtitle: "Ten angles, fast",
-            text: "Give me ten different angles on this idea, ranked by how promising they are:",
-            tint: .brand
+            verb: "Draft",
+            continuation: "a reply I keep putting off",
+            text: "Draft a short, appropriate reply to this message:"
         )
     ]
 
     static let tools: [StarterPrompt] = [
         StarterPrompt(
-            id: "weather",
-            icon: "cloud.sun",
-            title: "Weather",
-            subtitle: "Right where I am",
-            text: "What is the weather where I am right now?",
-            tint: .info
+            id: "search",
+            verb: "Look up",
+            continuation: "what happened today",
+            text: "Search the web and summarize what you find about:"
         ),
         StarterPrompt(
-            id: "search",
-            icon: "globe",
-            title: "Search the web",
-            subtitle: "Look it up and cite it",
-            text: "Search the web and summarize what you find about:",
-            tint: .info
+            id: "weather",
+            verb: "Check",
+            continuation: "the weather here",
+            text: "What is the weather where I am right now?"
         ),
         StarterPrompt(
             id: "calculate",
-            icon: "function",
-            title: "Calculate",
-            subtitle: "Work it out step by step",
-            text: "Work this out step by step:",
-            tint: .success
+            verb: "Work out",
+            continuation: "a number, step by step",
+            text: "Work this out step by step:"
         ),
         StarterPrompt(
-            id: "device",
-            icon: "iphone",
-            title: "This device",
-            subtitle: "What can it run",
-            text: "What are this device's specs, and what size model can it run comfortably?",
-            tint: .brand
-        ),
-        StarterPrompt(
-            id: "time",
-            icon: "clock",
-            title: "Time and date",
-            subtitle: "Local, right now",
-            text: "What is the current local time and date?",
-            tint: .success
+            id: "compare",
+            verb: "Compare",
+            continuation: "two things properly",
+            text: "Search the web, then compare these and tell me the trade-offs of each:"
         )
     ]
-}
-
-enum PromptTint: Hashable {
-    case brand
-    case info
-    case success
-    case danger
-
-    var color: Color {
-        switch self {
-        case .brand: AppColors.brand
-        case .info: AppColors.info
-        case .success: AppColors.success
-        case .danger: AppColors.danger
-        }
-    }
-
-    var wash: Color {
-        switch self {
-        case .brand: AppColors.brandMuted
-        case .info: AppColors.infoMuted
-        case .success: AppColors.successMuted
-        case .danger: AppColors.dangerMuted
-        }
-    }
 }
 
 struct PromptSuggestions: View {
     let prompts: [StarterPrompt]
     let onSelect: (StarterPrompt) -> Void
 
-    private let fade: CGFloat = 28
+    private let fade: CGFloat = Space.xl
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Space.sm) {
+            HStack(alignment: .top, spacing: Space.lg) {
                 ForEach(prompts) { prompt in
-                    PromptCard(prompt: prompt) { onSelect(prompt) }
+                    PromptPhrase(prompt: prompt) { onSelect(prompt) }
                 }
             }
             .padding(.horizontal, fade)
@@ -186,44 +113,36 @@ struct PromptSuggestions: View {
     }
 }
 
-private struct PromptCard: View {
+private struct PromptPhrase: View {
     let prompt: StarterPrompt
     let action: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Space.sm) {
-                Image(systemName: prompt.icon)
-                    .glyph(Glyph.sm)
-                    .foregroundStyle(prompt.tint.color)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(prompt.tint.wash))
+            VStack(alignment: .leading, spacing: Space.hair) {
+                Text(prompt.verb)
+                    .appType(.cardTitle)
+                    .foregroundStyle(AppColors.textPrimary)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(prompt.title)
-                        .appType(.meta)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineLimit(1)
-                    Text(prompt.subtitle)
-                        .appType(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(1)
-                }
+                Text(prompt.continuation)
+                    .appType(.meta)
+                    .foregroundStyle(AppColors.textTertiary)
             }
-            .padding(.horizontal, Space.sm)
+            .lineLimit(1)
+            .padding(.horizontal, Space.md)
             .padding(.vertical, Space.sm)
             .background(
                 RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(AppColors.surface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .strokeBorder(AppColors.border, lineWidth: Stroke.hairline)
+                    .fill(isHovered ? AppColors.surfaceMuted : .clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(prompt.title). \(prompt.subtitle)")
+        .onHover { inside in
+            withAnimation(Motion.fade) { isHovered = inside }
+        }
+        .accessibilityLabel("\(prompt.verb) \(prompt.continuation)")
     }
 }

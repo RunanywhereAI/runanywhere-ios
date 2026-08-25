@@ -64,15 +64,8 @@ final class ChatComposerModel {
     var isConversationEmpty = true
     var toolsSupported = true
 
-    var toolStatus: String? {
-        if let toolsUnavailableMessage { return toolsUnavailableMessage }
-        guard toolsEnabled else { return nil }
-        return "Trace appears in replies"
-    }
-
-    var toolsLabel: String {
-        if !toolsSupported { return "This model has no tool support in its chat template" }
-        return toolsEnabled ? "Disable web and tools" : "Enable web and tools"
+    var hasActiveModes: Bool {
+        toolsEnabled || thinkingEnabled
     }
 
     var hasTrimmedDraft: Bool {
@@ -109,13 +102,13 @@ final class ChatComposerModel {
     }
 
     var placeholder: String {
-        guard hasModel else { return "Choose a chat model to start" }
+        guard hasModel else { return "Choose a model to start" }
         if let staged {
             return staged.isImage
                 ? "Add a question, or send to describe this image"
                 : "Add a question, or send to ask about this file"
         }
-        return toolsEnabled ? "Ask with web and tools…" : "Ask anything…"
+        return "Ask anything"
     }
 
     var prompts: [StarterPrompt] {
@@ -138,10 +131,5 @@ final class ChatComposerModel {
 
     func dismissRejection() {
         attachmentRejection = nil
-    }
-
-    func toggleThinking() {
-        guard thinkingSupported else { return }
-        thinkingEnabled.toggle()
     }
 }

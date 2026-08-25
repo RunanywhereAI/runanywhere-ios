@@ -8,6 +8,8 @@ struct ManageModelsView: View {
     @State private var openOrg: ModelOrg?
     @State private var purpose: ModelPurpose?
     @State private var installedOnly = false
+    @Environment(AppSettings.self) private var settings
+    @Bindable private var preferences = ModelBrowsePreferences.shared
 
     private let engine = ModelRecommendationEngine()
     private let tierResolver = HardwareTierResolver()
@@ -45,6 +47,10 @@ struct ManageModelsView: View {
         ModelOrgCatalog.groups(from: filtered)
     }
 
+    private var purposeGroups: [ModelPurposeGroup] {
+        ModelPurposeCatalog.groups(from: filtered)
+    }
+
     var body: some View {
         Group {
             if store.raw.isEmpty {
@@ -55,6 +61,8 @@ struct ManageModelsView: View {
                         ? "Reading what is registered on this device."
                         : "The catalog registers on launch. Refresh to try again."
                 )
+            } else if settings.mode == .user {
+                CuratedModelsView(shortlists: store.shortlists, store: store)
             } else if let openOrg, let group = orgs.first(where: { $0.org == openOrg }) {
                 OrgDetail(group: group, store: store) { self.openOrg = nil }
             } else {
@@ -62,6 +70,8 @@ struct ManageModelsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // A publisher is only open because the index was showing publishers.
+        .onChange(of: preferences.grouping) { openOrg = nil }
     }
 
     private var browse: some View {
@@ -75,27 +85,99 @@ struct ManageModelsView: View {
 
                 controls
 
-                if orgs.isEmpty {
-                    EmptyState(
-                        symbol: "magnifyingglass",
-                        title: "Nothing matches",
-                        detail: "Try a different filter or search term."
-                    )
-                } else {
-                    VStack(spacing: Space.sm) {
-                        ForEach(orgs) { group in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) { openOrg = group.org }
-                            } label: {
-                                OrgRow(group: group, store: store)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                catalog
                     .padding(.horizontal, Space.lg)
-                }
             }
             .padding(.vertical, Space.lg)
+        }
+    }
+
+    @ViewBuilder
+    private var catalog: some View {
+        switch preferences.grouping {
+        case .publisher:
+            if orgs.isEmpty {
+                nothingMatches
+            } else {
+                publisherIndex
+            }
+        case .category:
+            if purposeGroups.isEmpty {
+                nothingMatches
+            } else {
+                VStack(alignment: .leading, spacing: Space.xl) {
+                    ForEach(purposeGroups) { group in
+                        categorySection(group)
+                    }
+                }
+            }
+        }
+    }
+
+    private var nothingMatches: some View {
+        EmptyState(
+            symbol: "magnifyingglass",
+            title: "Nothing matches",
+            detail: "Try a different filter or search term."
+        )
+    }
+
+    @ViewBuilder
+    private var publisherIndex: some View {
+        switch preferences.layout {
+        case .list:
+            VStack(spacing: Space.sm) {
+                ForEach(orgs) { group in
+                    openButton(group) { OrgRow(group: group, store: store) }
+                }
+            }
+        case .grid:
+            ModelCardGrid(items: orgs, id: \.id) { group in
+                openButton(group) { OrgTile(group: group) }
+            }
+        }
+    }
+
+    private func openButton(_ group: ModelOrgGroup, @ViewBuilder label: () -> some View) -> some View {
+        Button {
+            withAnimation(Motion.fade) { openOrg = group.org }
+        } label: {
+            label()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func categorySection(_ group: ModelPurposeGroup) -> some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            HStack(spacing: Space.sm) {
+                Image(systemName: group.purpose.symbol)
+                    .glyph(Glyph.sm, weight: .semibold)
+                    .foregroundStyle(AppColors.brand)
+                Text(group.purpose.title)
+                    .appType(.sectionTitle)
+                    .foregroundStyle(AppColors.textPrimary)
+                Spacer(minLength: 0)
+                Text(group.models.count == 1 ? "1 model" : "\(group.models.count) models")
+                    .appType(.meta)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            switch preferences.layout {
+            case .list:
+                VStack(spacing: Space.sm) {
+                    ForEach(group.models, id: \.id) { model in
+                        CatalogModelRow(
+                            model: model,
+                            store: store,
+                            caption: ModelOrgCatalog.org(for: model).displayName
+                        )
+                    }
+                }
+            case .grid:
+                ModelCardGrid(items: group.models, id: \.id) { model in
+                    ModelTile(model: model, store: store)
+                }
+            }
         }
     }
 
@@ -129,6 +211,9 @@ struct ManageModelsView: View {
                 }
                 .padding(.horizontal, Space.lg)
             }
+
+            ModelViewOptions(preferences: preferences)
+                .padding(.horizontal, Space.lg)
         }
     }
 

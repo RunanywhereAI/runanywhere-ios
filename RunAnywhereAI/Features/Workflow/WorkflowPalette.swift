@@ -61,7 +61,6 @@ struct WorkflowPalette: View {
                 }
             }
 
-            librarySection
         }
         .listStyle(.sidebar)
         .background(AppColors.background)
@@ -250,58 +249,8 @@ struct WorkflowPalette: View {
         return entry.isScheduled ? AppColors.success : AppColors.warning
     }
 
-    // MARK: - Saved workflows
 
-    @ViewBuilder private var librarySection: some View {
-        Section("Library") {
-            if let failure = viewModel.libraryError {
-                unreadableRow("Couldn't read the workflow library", detail: failure) {
-                    Task { await viewModel.refreshLibrary() }
-                }
-            } else if viewModel.savedWorkflows.isEmpty {
-                Text("No saved workflows")
-                    .appType(.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-            } else {
-                ForEach(viewModel.savedWorkflows, id: \.id) { summary in
-                    libraryRow(summary)
-                }
-            }
-        }
-    }
 
-    private func libraryRow(_ summary: RAWorkflowSummary) -> some View {
-        Button {
-            onLoad(summary.id)
-        } label: {
-            VStack(alignment: .leading, spacing: Space.hair) {
-                HStack(spacing: Space.xs) {
-                    Text(summary.name)
-                        .appType(.body)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineLimit(1)
-                    if summary.id == viewModel.workflowID {
-                        Circle()
-                            .fill(AppColors.brand)
-                            .frame(width: Space.xs + 1, height: Space.xs + 1)
-                    }
-                }
-                Text(libraryMeta(summary))
-                    .appType(.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button("Export…") { onExport(summary.id) }
-            Button("Delete", role: .destructive) {
-                Task { await viewModel.delete(id: summary.id) }
-            }
-        }
-    }
 
     /// A listing that threw, said as what it is, with the one thing worth
     /// offering: try again.

@@ -17,10 +17,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct WorkflowScreen: View {
-    @State private var viewModel = WorkflowEditorViewModel()
+    /// Owned by `HomeScreen` so the sidebar and the canvas are the same
+    /// library. Two lists of saved workflows that disagree is worse than one
+    /// in the wrong place.
+    @Bindable var viewModel: WorkflowEditorViewModel
     @State private var camera = WorkflowCanvasCamera()
     @State private var viewportSize = CGSize.zero
     @State private var isImporting = false
+    @State private var isPickingTemplate = false
     @State private var exportRequest: WorkflowExportRequest?
     @State private var packEditor: WorkflowPackEditorMode?
     @Environment(\.undoManager)
@@ -64,6 +68,10 @@ struct WorkflowScreen: View {
             actions: { Button("OK", role: .cancel) { viewModel.packStore.errorMessage = nil } },
             message: { Text(viewModel.packStore.errorMessage ?? "") }
         )
+        .workflowTemplatePicker(isPresented: $isPickingTemplate) { template in
+            viewModel.newWorkflow(from: template)
+            fitToContent()
+        }
         .modifier(WorkflowBundleTransfer(
             viewModel: viewModel,
             isImporting: $isImporting,
@@ -128,11 +136,8 @@ struct WorkflowScreen: View {
 
     private var documentControls: some View {
         HStack(spacing: Space.xs) {
-            BarButton(systemImage: "doc.badge.plus") {
-                viewModel.newWorkflow()
-                fitToContent()
-            }
-            .help("New workflow")
+            BarButton(systemImage: "doc.badge.plus") { isPickingTemplate = true }
+                .help("New workflow, blank or from a template")
 
             Menu {
                 Button("Export…") {
@@ -151,6 +156,13 @@ struct WorkflowScreen: View {
             .menuIndicator(.hidden)
             .frame(width: Measure.hitTarget)
             .help("Export or import a bundle, or turn this graph into a node pack")
+
+            BarButton(systemImage: "questionmark.circle") {
+                viewModel.referenceRequest = WorkflowNodeReferenceRequest(
+                    focus: viewModel.singleSelectedNode?.kind
+                )
+            }
+            .help("What every node does, and what it does with its inputs")
         }
     }
 

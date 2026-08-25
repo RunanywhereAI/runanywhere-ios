@@ -204,7 +204,10 @@ enum WorkflowNodeKind: String, CaseIterable, Identifiable, Codable {
         case .diarize:
             .init(title: "Diarize", systemImage: "person.2.wave.2", category: .speech)
         case .segment:
-            .init(title: "Segment", systemImage: "scissors", category: .speech)
+            // Image segmentation, not audio: run_segment wants raw pixels and a
+            // width and height. It sat under Speech next to Diarize purely
+            // because both names sound like splitting something up.
+            .init(title: "Segment", systemImage: "squareshape.split.3x3", category: .ai)
         case .ragQuery:
             .init(title: "RAG Query", systemImage: "text.magnifyingglass", category: .knowledge)
         case .ragIngest:

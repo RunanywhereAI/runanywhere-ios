@@ -42,6 +42,7 @@ private enum WorkflowSheetRoute: Identifiable {
     case pickImport(WorkflowBundleImportRequest)
     case importReport(WorkflowImportOutcome)
     case packEditor(WorkflowPackEditorMode)
+    case nodeReference(WorkflowNodeReferenceRequest)
 
     var id: String {
         switch self {
@@ -49,6 +50,7 @@ private enum WorkflowSheetRoute: Identifiable {
         case .pickImport(let request): return "pick-\(request.id)"
         case .importReport(let outcome): return "report-\(outcome.id)"
         case .packEditor(let mode): return "editor-\(mode.id)"
+        case .nodeReference(let request): return "reference-\(request.id)"
         }
     }
 }
@@ -91,12 +93,14 @@ struct WorkflowBundleTransfer: ViewModifier {
         if let pending = packStore.pendingImport { return .pickImport(pending) }
         if let outcome = packStore.importOutcome { return .importReport(outcome) }
         if let packEditor { return .packEditor(packEditor) }
+        if let reference = viewModel.referenceRequest { return .nodeReference(reference) }
         return nil
     }
 
     private func dismissAll() {
         exportRequest = nil
         packEditor = nil
+        viewModel.referenceRequest = nil
         packStore.clearPendingImport()
         packStore.clearImportOutcome()
     }
@@ -112,6 +116,10 @@ struct WorkflowBundleTransfer: ViewModifier {
             WorkflowImportReport(outcome: outcome)
         case .packEditor(let mode):
             WorkflowPackEditorSheet(viewModel: viewModel, mode: mode)
+        case .nodeReference(let request):
+            WorkflowNodeReferenceSheet(focus: request.focus) {
+                viewModel.referenceRequest = nil
+            }
         }
     }
 }

@@ -228,6 +228,18 @@ struct WorkflowNodeInspector: View {
                         .appType(.caption)
                         .foregroundStyle(AppColors.textSecondary)
                 }
+
+                Spacer(minLength: Space.xs)
+
+                Button {
+                    viewModel.referenceRequest = WorkflowNodeReferenceRequest(focus: node.kind)
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .glyph(Glyph.sm)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help("Read what a \(presentation.title) node does")
             }
         } footer: {
             Text("The name is how expressions refer to this node.")
@@ -309,17 +321,27 @@ struct WorkflowNodeInspector: View {
     /// Every model dropdown in the inspector, filtered to one category. An id
     /// the registry no longer knows stays selectable and is labelled as such,
     /// so opening a workflow on another machine does not silently retarget it.
+    /// - Parameter allowsAutomatic: whether "use whatever is loaded" is a real
+    ///   option. Most executors resolve an empty model id against the loaded
+    ///   model for that category, but rerank and the RAG nodes resolve their
+    ///   own artifact and fail outright on an empty id — offering Automatic
+    ///   there is offering a choice that always errors at run time.
     func modelPicker(
         _ title: String,
         category: RAModelCategory,
         selection: Binding<String>,
-        automaticLabel: String = "Automatic (currently loaded)"
+        automaticLabel: String = "Automatic (currently loaded)",
+        allowsAutomatic: Bool = true
     ) -> some View {
         let models = viewModel.models(for: category)
         let knownIDs = models.map(\.id)
         let current = selection.wrappedValue
         return Picker(title, selection: selection) {
-            Text(automaticLabel).tag("")
+            if allowsAutomatic {
+                Text(automaticLabel).tag("")
+            } else {
+                Text("Choose a model").tag("")
+            }
             ForEach(models, id: \.id) { model in
                 Text(model.name).tag(model.id)
             }

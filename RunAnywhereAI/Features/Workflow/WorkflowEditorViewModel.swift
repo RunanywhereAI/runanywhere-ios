@@ -52,6 +52,11 @@ final class WorkflowEditorViewModel {
 
     var errorMessage: String?
 
+    /// Raised by the top bar and by the inspector, and read by the editor's one
+    /// sheet route so the reference cannot fight an export or a pack editor for
+    /// the same slot.
+    var referenceRequest: WorkflowNodeReferenceRequest?
+
     private(set) var canUndo = false
     private(set) var canRedo = false
 
@@ -385,7 +390,17 @@ final class WorkflowEditorViewModel {
         availableModels = (try? await RunAnywhere.models.list(
             filter: ModelFilter(downloadedOnly: true)
         )) ?? []
-        availableTools = await RunAnywhere.llm.tools.list()
+        // Two registries feed one picker. `tools.list()` reports only what this
+        // app registered; commons keeps its own providers — `web_research`
+        // among them — and both the tool-calling run loop and a Tool Call node
+        // resolve either. The run loop lets a host tool of the same name win,
+        // so the merge here does too. Sorted because neither source promises
+        // an order, and a picker that reshuffles between refreshes is unusable.
+        let hostTools = await RunAnywhere.llm.tools.list()
+        let hostNames = Set(hostTools.map(\.name))
+        let providers = RunAnywhere.llm.tools.nativeProviders()
+            .filter { !hostNames.contains($0.name) }
+        availableTools = (hostTools + providers).sorted { $0.name < $1.name }
         await refreshPacks()
         backfillToolPorts()
     }
@@ -467,12 +482,18 @@ final class WorkflowEditorViewModel {
         }
     }
 
-    func newWorkflow() {
+    /// A fresh unsaved document. With a template it arrives wired and named
+    /// after the template; without one it is the empty canvas plus its trigger.
+    func newWorkflow(from template: WorkflowTemplate? = nil) {
         workflowID = Self.freshWorkflowID()
-        workflowName = "Untitled workflow"
+        workflowName = template?.name ?? "Untitled workflow"
         createdAtMs = Int64(Date().timeIntervalSince1970 * 1000)
-        graph = WorkflowGraph()
-        seedTrigger()
+        if let template {
+            graph = template.graph()
+        } else {
+            graph = WorkflowGraph()
+            seedTrigger()
+        }
         resetEditorState()
     }
 

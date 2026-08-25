@@ -125,7 +125,7 @@ enum WorkflowDocumentMapping {
         config.prompt = settings.prompt
         if !settings.systemPrompt.isEmpty { config.systemPrompt = settings.systemPrompt }
         if !settings.modelID.isEmpty { config.modelID = settings.modelID }
-        if let options = generation(settings) { config.generation = options }
+        config.generation = generation(settings)
         return config
     }
 
@@ -135,7 +135,7 @@ enum WorkflowDocumentMapping {
         config.jsonSchema = settings.jsonSchema
         if !settings.systemPrompt.isEmpty { config.systemPrompt = settings.systemPrompt }
         if !settings.modelID.isEmpty { config.modelID = settings.modelID }
-        if let options = generation(settings) { config.generation = options }
+        config.generation = generation(settings)
         return config
     }
 
@@ -144,7 +144,7 @@ enum WorkflowDocumentMapping {
         config.prompt = settings.prompt
         config.binaryKey = settings.binaryKey
         if !settings.modelID.isEmpty { config.modelID = settings.modelID }
-        if let options = generation(settings) { config.generation = options }
+        config.generation = generation(settings)
         return config
     }
 
@@ -348,9 +348,19 @@ enum WorkflowDocumentMapping {
         return config
     }
 
-    private static func generation(_ settings: WorkflowNodeSettings) -> RALLMGenerationOptions? {
-        guard settings.llmTemperature != nil || settings.llmMaxTokens != nil else { return nil }
-        var options = RALLMGenerationOptions()
+    /// Always the IDL defaults, with the node's overrides on top.
+    ///
+    /// Returning nil, or a bare `RALLMGenerationOptions()`, was not neutral.
+    /// Commons stamps the node's system prompt onto the same options message,
+    /// so `has_options` is true for every LLM node, and it then passes
+    /// `temperature` through unconditionally — where an unset optional reads
+    /// back as 0.0 and is honoured as an explicit request for greedy decoding.
+    /// Every stock template sets a system prompt and none sets a temperature,
+    /// so all of them generated flat, and re-running a "rewrite this" node
+    /// returned byte-identical text. Sending the defaults explicitly is what
+    /// makes the two inspector overrides independent of each other.
+    private static func generation(_ settings: WorkflowNodeSettings) -> RALLMGenerationOptions {
+        var options = RALLMGenerationOptions.defaults()
         if let temperature = settings.llmTemperature { options.temperature = Float(temperature) }
         if let maxTokens = settings.llmMaxTokens { options.maxOutputTokens = Int32(maxTokens) }
         return options

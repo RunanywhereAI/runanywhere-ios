@@ -143,7 +143,9 @@ extension WorkflowNodeInspector {
             promptSection(minHeight: EditorHeight.prose)
             binaryKeySection("Image Attachment", hint: "The attachment on the incoming item " +
                              "holding the image bytes — a File Read node in binary mode makes one.")
-            modelSection(.vision)
+            // run_vision loads MODEL_CATEGORY_MULTIMODAL, so listing .vision
+            // here offered models that fail the moment the node runs.
+            modelSection(.multimodal)
             Section("Generation") { generationRows() }
         case .embed:
             Section("Text") {
@@ -160,7 +162,21 @@ extension WorkflowNodeInspector {
                     format: .number
                 )
             }
-            modelSection(.rerank)
+            modelSection(.rerank, allowsAutomatic: false)
+        case .segment:
+            Section {
+                TextField("Attachment key", text: setting(\.textInput, field: "textInput"))
+            } header: {
+                Text("Image Attachment")
+            } footer: {
+                footnote(
+                    "run_segment reads this as the key of a raw pixel attachment, not as " +
+                    "text, and needs width and height on the same item. Nothing in the " +
+                    "palette produces raw pixels yet — File Read hands over file bytes " +
+                    "unchanged — so this node currently needs an image from outside the editor."
+                )
+            }
+            modelSection(.semanticSegmentation)
         default:
             EmptyView()
         }
@@ -172,14 +188,27 @@ extension WorkflowNodeInspector {
         }
     }
 
-    private func modelSection(_ category: RAModelCategory) -> some View {
+    private func modelSection(
+        _ category: RAModelCategory,
+        allowsAutomatic: Bool = true
+    ) -> some View {
         Section {
-            modelPicker("Model", category: category, selection: setting(\.modelID, field: "modelID"))
+            modelPicker(
+                "Model",
+                category: category,
+                selection: setting(\.modelID, field: "modelID"),
+                allowsAutomatic: allowsAutomatic
+            )
         } header: {
             Text("Model")
         } footer: {
-            footnote("Downloaded \(category.workflowLabel.lowercased()) models only. " +
-                     "The runner loads the model when the node runs.")
+            footnote(
+                allowsAutomatic
+                    ? "Downloaded \(category.workflowLabel.lowercased()) models only. " +
+                      "The runner loads the model when the node runs."
+                    : "Downloaded \(category.workflowLabel.lowercased()) models only. " +
+                      "This node resolves its own model, so one has to be named."
+            )
         }
     }
 
@@ -223,11 +252,6 @@ extension WorkflowNodeInspector {
             binaryKeySection("Audio Attachment", hint: audioHint)
             Section("Speakers") { speakerCountRow }
             modelSection(.speakerDiarization)
-        case .segment:
-            Section("Text") {
-                TextField("Text expression", text: setting(\.textInput, field: "textInput"))
-            }
-            modelSection(.semanticSegmentation)
         default:
             EmptyView()
         }
@@ -305,7 +329,8 @@ extension WorkflowNodeInspector {
             modelPicker(
                 "Embedding",
                 category: .embedding,
-                selection: setting(\.embeddingModelID, field: "embeddingModelID")
+                selection: setting(\.embeddingModelID, field: "embeddingModelID"),
+                allowsAutomatic: false
             )
             modelPicker(
                 "Language",

@@ -20,26 +20,20 @@ final class ChatViewModel {
     var loadedModelID: String?
     var modelContextLength = 0
     var modelBackend = ""
+    /// A vision model answers text through the VLM component, because that is
+    /// the component it loads into — the LLM path cannot see it at all.
+    var modelIsVision = false
     var attachment: ChatAttachment?
     var embeddingModelID: String?
     private(set) var indexState: DocumentIndexState = .idle
 
     private var ragSession: RagSession?
     private var ragKey: String?
-    var toolsEnabled = false {
-        didSet {
-            guard toolsEnabled, !toolsRegistered else { return }
-            Task {
-                await ChatTools.registerBuiltIns()
-                toolsRegistered = true
-            }
-        }
-    }
+    var toolsEnabled = false
     var thinkingEnabled = false
 
     private var task: Task<Void, Never>?
     private var speechTask: Task<Void, Never>?
-    private var toolsRegistered = false
     private let logger = Logger(subsystem: "com.runanywhere.RunAnywhereAI", category: "Chat")
 
     var isEmpty: Bool { turns.isEmpty && draft == nil }
@@ -96,6 +90,11 @@ final class ChatViewModel {
                 // on memory rather than trapped, so nothing is written.
                 var options = LlmOptions()
                 options.maxOutputTokens = 320
+                // Same instruction the text path sends. Without it the model
+                // opens with "The image you have shared appears to be a
+                // photograph…" and the 320-token cap then cuts the actual
+                // answer off mid-sentence.
+                options.systemPrompt = Self.systemPrompt(toolsEnabled: false)
                 let stream = try await RunAnywhere.vlm.generateStream(
                     image: image,
                     prompt: question,
@@ -252,10 +251,6 @@ final class ChatViewModel {
                         finish(pending)
                         return
                     }
-                    if !toolsRegistered {
-                        await ChatTools.registerBuiltIns()
-                        toolsRegistered = true
-                    }
                     // `generateStream` never consults the tool registry; only the
                     // one-shot `generate` runs the call-and-execute loop. With
                     // tools on we trade streaming for tools rather than silently
@@ -276,7 +271,12 @@ final class ChatViewModel {
                     }
                 }
 
-                let stream = try await RunAnywhere.llm.generateStream(messages: history, options: options)
+                let stream = modelIsVision
+                    ? try await RunAnywhere.vlm.generateStream(
+                        prompt: Self.flatten(history),
+                        options: options
+                    )
+                    : try await RunAnywhere.llm.generateStream(messages: history, options: options)
 
                 for try await event in stream {
                     if Task.isCancelled { break }
@@ -384,8 +384,13 @@ final class ChatViewModel {
     /// the raw tool call instead of running it. The loop also needs a short,
     /// deterministic final answer with reasoning off; leaving sampling loose or
     /// thinking on is what returned -130 (generation failed).
-    static func toolCallingOptions() -> RAToolCallingOptions {
+    ///
+    /// `tools` is set rather than left empty: an empty list means the whole
+    /// registry, and the registry is sized for the workflow editor. Chat's
+    /// pair comes from `ChatTools`.
+    static func toolCallingOptions(tools: [ToolDefinition]) -> RAToolCallingOptions {
         var options = RAToolCallingOptions()
+        options.tools = tools
         options.autoExecute = true
         // Tools stay available so the model can act on a `recall` a result
         // hands back — a thin search answered by searching again is the whole
@@ -450,8 +455,14 @@ final class ChatViewModel {
 
         let loop = try await RunAnywhere.generateWithTools(
             prompt: prompt,
-            options: Self.toolGenerationOptions(systemPrompt: ChatTools.skill),
-            toolOptions: Self.toolCallingOptions(),
+            options: Self.toolGenerationOptions(systemPrompt: Self.systemPrompt(toolsEnabled: true)),
+            toolOptions: Self.toolCallingOptions(tools: await ChatTools.offeredTools()),
+            // The turn being answered is the prompt, so everything before it is
+            // the conversation. Omitting this made every tool-enabled turn a
+            // cold start: "who won it?" after a question about a match had
+            // nothing to resolve "it" against, while the same follow-up worked
+            // with tools off because `generateStream(messages:)` carries them.
+            history: history.dropLast().map(\.content),
             onProgress: { progress in collector.record(progress) }
         )
         collector.finish()
@@ -516,13 +527,75 @@ final class ChatViewModel {
         turns.append(turn)
     }
 
+    /// The VLM text entry takes one prompt rather than a message list, so the
+    /// conversation is rendered plainly. Roles are named because dropping them
+    /// turns a dialogue into one run-on paragraph the model answers as a whole.
+    static func flatten(_ history: [ChatMessage]) -> String {
+        var lines = history.map { message in
+            (message.role == .user ? "User: " : "Assistant: ") + message.content
+        }
+        lines.append("Assistant:")
+        return lines.joined(separator: "\n\n")
+    }
+
+    /// Who the model is, on every turn. Two sentences, no conditionals, and
+    /// nothing about how to handle the input.
+    ///
+    /// Longer drafts kept failing in the same way. "Answer the question that
+    /// was asked, then stop" assumes there is a question: given "hi", a 0.8B
+    /// model quoted the instruction back, wrote "Wait, this is a bit
+    /// confusing", and looped on that for the whole budget. A small model
+    /// treats a meta-instruction as something to reason about rather than
+    /// something to obey, so this says what it is and how long to be, and
+    /// stops there.
+    static let assistantPrompt = """
+        You are a helpful assistant running privately on this device. \
+        Keep your replies brief and direct.
+        """
+    /// Added only when the reader asked to see the thinking.
+    ///
+    /// Scoped on purpose. Brevity alone reads as "do not bother working it
+    /// out" — a 2.6B model given only that answered "3:15pm + 95 minutes =
+    /// 6:50pm". An unscoped "work the problem out before you answer" fixed
+    /// that and broke the other end: a 0.8B model applied it to "hi" and spent
+    /// its whole budget reasoning about a greeting without ever answering.
+    /// Naming the condition is what serves both.
+    static let reasoningClause = "Reason through anything that needs it before replying."
+
+    /// The instruction for one turn: who the model is, plus how to use its
+    /// tools when it has any, plus a nudge to reason when the reader asked for
+    /// reasoning. Composed, never substituted.
+    ///
+    /// The tool contract used to be passed alone, which swapped out the model's
+    /// identity for a page about `web_research`, so a turn that called no tool
+    /// answered as if the tool document were the whole brief.
+    static func systemPrompt(toolsEnabled: Bool, thinkingEnabled: Bool = false) -> String {
+        var prompt = assistantPrompt
+        if thinkingEnabled { prompt += " " + reasoningClause }
+        if toolsEnabled { prompt += "\n\n" + ChatTools.skill }
+        return prompt
+    }
+
     private func makeOptions() -> LlmOptions {
         var options = LlmOptions()
-        if thinkingEnabled {
-            var reasoning = ReasoningOptions()
-            reasoning.mode = .on
-            options.reasoning = reasoning
-        }
+        options.systemPrompt = Self.systemPrompt(
+            toolsEnabled: toolsEnabled,
+            thinkingEnabled: thinkingEnabled
+        )
+
+        // Both directions are stated. Leaving reasoning unset does not mean
+        // "no opinion": with a thinking-capable model the splitter reads it as
+        // "reasoning might be coming" and withholds the whole answer waiting
+        // for a closing tag that a model answering plainly never sends, so
+        // nothing streamed and the turn arrived in one lump at the end.
+        var reasoning = ReasoningOptions()
+        reasoning.mode = thinkingEnabled ? .on : .off
+        // Thought tokens are dropped at the boundary unless the caller asks for
+        // them. Without this the reasoning channel is a bin: the disclosure
+        // never fills while streaming, and once a prefilled `<think>` sends the
+        // whole turn down that channel the reply comes back empty.
+        reasoning.includeInOutput = thinkingEnabled
+        options.reasoning = reasoning
         return options
     }
 

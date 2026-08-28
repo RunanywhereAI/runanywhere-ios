@@ -1,0 +1,84 @@
+import SwiftUI
+import Observation
+
+enum AppTheme: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .system: "circle.lefthalf.filled"
+        case .light: "sun.max"
+        case .dark: "moon"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+@Observable
+@MainActor
+final class AppSettings {
+    var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: Key.theme) } }
+
+    /// Written straight through to `AppColors`, which the whole design system
+    /// reads from. The root view is keyed on this so the tree rebuilds.
+    var mode: AppMode {
+        didSet {
+            UserDefaults.standard.set(mode.rawValue, forKey: Key.mode)
+            AppColors.mode = mode
+        }
+    }
+
+    /// Whether the first-launch setup has been answered. Skipping counts:
+    /// somebody who declined the download should not be asked again on every
+    /// launch, and chat still offers a model when they get there.
+    var hasCompletedSetup: Bool {
+        didSet { UserDefaults.standard.set(hasCompletedSetup, forKey: Key.setupDone) }
+    }
+
+    private enum Key {
+        static let theme = "app.theme"
+        static let mode = "app.mode"
+        static let setupDone = "app.setup.completed"
+    }
+
+    init() {
+        hasCompletedSetup = UserDefaults.standard.bool(forKey: Key.setupDone)
+
+        let rawTheme = UserDefaults.standard.string(forKey: Key.theme) ?? AppTheme.system.rawValue
+        theme = AppTheme(rawValue: rawTheme) ?? .system
+
+        let rawMode = UserDefaults.standard.string(forKey: Key.mode) ?? AppMode.user.rawValue
+        let restored = AppMode(rawValue: rawMode) ?? .user
+        mode = restored
+        // Before any view reads a token, so the first frame is already the
+        // right colour rather than flashing the default palette.
+        AppColors.mode = restored
+    }
+
+    static func format(_ bytes: Int64) -> String {
+        guard bytes > 0 else { return "0 MB" }
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+}

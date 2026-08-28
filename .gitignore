@@ -121,3 +121,4 @@ RunAnywhereAI/Resources/RunAnywhereLocalSecrets.plist
 # See scripts/sync-skills.sh.
 .claude/*
 .agents/*
+default.profraw

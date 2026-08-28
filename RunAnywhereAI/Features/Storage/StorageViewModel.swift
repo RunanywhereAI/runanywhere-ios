@@ -1,98 +1,108 @@
-//
-//  StorageViewModel.swift
-//  RunAnywhereAI
-//
-//  Simplified ViewModel that uses SDK storage methods
-//
-
 import Foundation
-import SwiftUI
+import Observation
 import RunAnywhere
-import Combine
+import os
 
+/// One downloaded model as the storage screen shows it.
+struct StoredModel: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let kind: String
+    let bytes: Int64
+    let sizeLabel: String
+}
+
+@Observable
 @MainActor
-class StorageViewModel: ObservableObject {
-    /// Single owner of storage state + SDK storage calls. The Storage screen
-    /// and the Settings storage section both consume this instance.
-    static let shared = StorageViewModel()
-
-    @Published var totalStorageSize: Int64 = 0
-    @Published var availableSpace: Int64 = 0
-    @Published var modelStorageSize: Int64 = 0
-    @Published var storedModels: [ModelInfo] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-
-    private var cancellables = Set<AnyCancellable>()
-
-    /// Byte counts, formatted once here rather than at each of the call sites
-    /// that used to reach for `ByteCountFormatter` themselves — the storage
-    /// screen and the Settings storage pane were free to disagree.
-    var formattedModelStorage: String { Self.formatBytes(modelStorageSize) }
-    var formattedAvailableSpace: String { Self.formatBytes(availableSpace) }
-    var formattedTotalStorage: String { Self.formatBytes(totalStorageSize) }
-
-    static func formatBytes(_ bytes: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+final class StorageViewModel {
+    /// The one long-running job allowed at a time, so a row can show its own
+    /// spinner without a second flag per action.
+    enum Activity: Equatable {
+        case clearingCache
+        case cleaningTemp
+        case deleting(String)
     }
 
-    func loadData() async {
+    private(set) var usedBytes: Int64 = 0
+    private(set) var freeBytes: Int64 = 0
+    private(set) var models: [StoredModel] = []
+    private(set) var isLoading = false
+    private(set) var activity: Activity?
+    private(set) var lastError: String?
+
+    private let logger = Logger(subsystem: "com.runanywhere.RunAnywhereAI", category: "Storage")
+
+    var isBusy: Bool { activity != nil }
+
+    var capacityBytes: Int64 { usedBytes + freeBytes }
+
+    /// How much of the volume the models account for, as a bar fraction.
+    var usedFraction: Double {
+        guard capacityBytes > 0 else { return 0 }
+        return min(max(Double(usedBytes) / Double(capacityBytes), 0), 1)
+    }
+
+    func refresh(store: ModelStore) async {
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
 
+        await store.refresh()
         let state = await RunAnywhere.models.state()
-        totalStorageSize = state.storageUsedBytes
-        availableSpace = state.storageFreeBytes
-        modelStorageSize = state.storageUsedBytes
-
-        do {
-            let downloaded = try await RunAnywhere.models.list(
-                filter: ModelFilter(downloadedOnly: true)
-            )
-            // Filter out registry-only / pseudo-model entries that have no on-disk
-            // artifact (Apple system models, built-in pseudo-models, etc.).
-            storedModels = downloaded.filter { $0.downloadSizeBytes > 0 }
-        } catch {
-            errorMessage = "Failed to load storage data: \(error.localizedDescription)"
-        }
-
-        isLoading = false
+        usedBytes = state.storageUsedBytes
+        freeBytes = state.storageFreeBytes
+        models = Self.stored(in: store)
     }
 
-    func refreshData() async {
-        await loadData()
-    }
-
-    func clearCache() async {
-        do {
+    func clearCache(store: ModelStore) async {
+        await run(.clearingCache, store: store) {
             try await RunAnywhere.clearCache()
-            await refreshData()
-        } catch {
-            errorMessage = "Failed to clear cache: \(error.localizedDescription)"
         }
     }
 
-    func cleanTempFiles() async {
-        do {
+    func cleanTempFiles(store: ModelStore) async {
+        await run(.cleaningTemp, store: store) {
             try await RunAnywhere.cleanTempFiles()
-            await refreshData()
-        } catch {
-            errorMessage = "Failed to clean temporary files: \(error.localizedDescription)"
         }
     }
 
-    func deleteModel(_ model: ModelInfo) async {
-        do {
+    func delete(_ model: StoredModel, store: ModelStore) async {
+        await run(.deleting(model.id), store: store) {
             try await RunAnywhere.models.delete(id: model.id)
-        } catch {
-            errorMessage = "Failed to delete model: \(error.localizedDescription)"
-            return
         }
+    }
 
-        await refreshData()
-        // Keep the Models tab in sync (it's a separate singleton with cached
-        // rows) so a model deleted here doesn't still show as Installed/Active
-        // there and fail to load when tapped.
-        await ModelListViewModel.shared.loadModelsFromRegistry()
+    private func run(_ activity: Activity, store: ModelStore, _ work: () async throws -> Void) async {
+        guard self.activity == nil else { return }
+        self.activity = activity
+        defer { self.activity = nil }
+
+        do {
+            try await work()
+            lastError = nil
+        } catch {
+            logger.error("\(String(describing: activity), privacy: .public) failed: \(error, privacy: .public)")
+            lastError = error.localizedDescription
+        }
+        await refresh(store: store)
+    }
+
+    /// Registry entries with bytes actually on disk, largest first.
+    ///
+    /// A zero download size means a registry-only entry — an Apple system model
+    /// or a built-in pseudo-model — which occupies nothing and cannot be freed.
+    private static func stored(in store: ModelStore) -> [StoredModel] {
+        let kinds = Dictionary(store.models.map { ($0.id, $0.category) }) { first, _ in first }
+        return store.raw
+            .filter { !$0.localPath.isEmpty && $0.downloadSizeBytes > 0 }
+            .map { info in
+                StoredModel(
+                    id: info.id,
+                    name: info.name.isEmpty ? info.id : info.name,
+                    kind: kinds[info.id] ?? "Model",
+                    bytes: info.downloadSizeBytes,
+                    sizeLabel: AppSettings.format(info.downloadSizeBytes)
+                )
+            }
+            .sorted { $0.bytes > $1.bytes }
     }
 }

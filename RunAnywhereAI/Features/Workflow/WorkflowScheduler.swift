@@ -211,8 +211,9 @@ final class WorkflowScheduler {
     ) -> Date? {
         switch config.kind {
         case .cron:
-            return (try? CronExpression(config.cron))?
-                .nextDate(after: now, calendar: .current)
+            return try? RunAnywhere.workflows.nextCronFireDate(
+                expression: config.cron, after: now
+            )
         case .daily:
             var components = DateComponents()
             components.hour = Int(min(23, config.hour))

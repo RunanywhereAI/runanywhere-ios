@@ -98,10 +98,8 @@ extension WorkflowNodeInspector {
     private static func cronNextFire(_ expression: String) -> String {
         guard !expression.isEmpty else { return "—" }
         do {
-            let cron = try CronExpression(expression)
-            guard let next = cron.nextDate(after: Date(), calendar: .current) else {
-                return "Never fires"
-            }
+            guard let next = try RunAnywhere.workflows.nextCronFireDate(expression: expression)
+            else { return "Never fires" }
             return WorkflowScheduleFormat.nextFire(next)
         } catch {
             return "Not a valid expression"

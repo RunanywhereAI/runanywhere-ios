@@ -33,6 +33,48 @@ final class DefaultModels {
         visionID = UserDefaults.standard.string(forKey: Key.vision)
     }
 
+    /// Fills in whatever the reader has not chosen with the model this app
+    /// ships pointed at.
+    ///
+    /// Every id starts empty, so a fresh install had a default for nothing: the
+    /// reader who could name a model did not need the choice, and the reader who
+    /// needed it could not make it. Seeding is done from what is actually on
+    /// disk — a modality whose download has not finished is left unset rather
+    /// than pointed at something absent — and it never overwrites a choice, so
+    /// this is safe to call on every catalog refresh.
+    func seed(from models: [ModelInfo]) {
+        if llmID == nil { llmID = settled(.language, from: models) }
+        if visionID == nil { visionID = settled(.vision, from: models) }
+        if sttID == nil { sttID = settled(.speechToText, from: models) }
+        if ttsID == nil { ttsID = settled(.textToSpeech, from: models) }
+        if embeddingID == nil { embeddingID = settled(.embedding, from: models) }
+    }
+
+    /// What should answer for `purpose` right now: the shipped pick when it is
+    /// on disk, otherwise the smallest thing installed that can do the job.
+    ///
+    /// The fallback matters more than it sounds. Someone who already has models
+    /// from before this list existed has none of ours, and without it every
+    /// modality would read as unset on a machine that is fully equipped.
+    /// Smallest rather than first because the order of the catalog is not a
+    /// ranking, and because size is the one axis on which the safe default is
+    /// obvious — it is also what keeps a four-billion-parameter computer-use
+    /// agent from being handed a photo to describe.
+    private func settled(_ purpose: ModelPurpose, from models: [ModelInfo]) -> String? {
+        if let shipped = ShippedModels.installed(for: purpose, from: models) {
+            return shipped.id
+        }
+        return models
+            .filter {
+                ModelPurpose.of($0) == purpose
+                    && (!$0.localPath.isEmpty || $0.isBuiltIn)
+                    && $0.isAvailableForUse
+                    && !$0.isLoRAAdapterArtifact
+            }
+            .min { $0.consumerSizeBytes < $1.consumerSizeBytes }?
+            .id
+    }
+
     /// Load `id` and confirm it actually landed in `category`.
     ///
     /// The in-memory `loaded` set is a cache, never the source of truth: a model

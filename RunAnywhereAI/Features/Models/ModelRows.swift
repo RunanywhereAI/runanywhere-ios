@@ -242,7 +242,22 @@ struct ModelTile: View {
 
     @ViewBuilder
     private var overline: some View {
-        if let standing {
+        if store.isDefault(model) {
+            // Ahead of the shortlist standing, which answers a different
+            // question: how this row compares with its neighbours, not whether
+            // it is the one the app will actually reach for.
+            HStack(spacing: Space.xs) {
+                Image(systemName: "checkmark.seal.fill")
+                    .glyph(Glyph.xs, weight: .semibold)
+                Text("Default")
+                    .appType(.overline)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(AppColors.brand)
+            .accessibilityLabel("The model this app uses for \(ModelPurpose.of(model).title)")
+        } else if let standing {
             HStack(spacing: Space.xs) {
                 Image(systemName: standing.symbol)
                     .glyph(Glyph.xs, weight: .semibold)

@@ -57,6 +57,21 @@ final class ModelStore {
     var downloadable: [InstalledModel] { models.filter { !$0.isDownloaded } }
 
     func refresh() async {
+        await refreshCatalog()
+        guard lastError == nil else { return }
+        let state = await RunAnywhere.models.state()
+        loadedLanguageModel = state.loaded[.language].map {
+            Self.map($0, displayName: displayName(for: $0))
+        }
+    }
+
+    /// The catalog on its own, without asking which model is loaded.
+    ///
+    /// `models.state()` measures the model directory to report storage, so it
+    /// costs a full recursive walk of every downloaded byte. That is fine once
+    /// a screen is up and wrong on the launch path, where it held the intro on
+    /// screen for as long as the walk took.
+    func refreshCatalog() async {
         isRefreshing = true
         defer {
             isRefreshing = false
@@ -68,10 +83,6 @@ final class ModelStore {
             displayNames = ConsumerModelName.uniqueNames(for: list)
             shortlists = ModelCuration.shortlists(from: list)
             models = list.map { Self.map($0, displayName: displayName(for: $0)) }
-            let state = await RunAnywhere.models.state()
-            loadedLanguageModel = state.loaded[.language].map {
-                Self.map($0, displayName: displayName(for: $0))
-            }
             lastError = nil
         } catch {
             logger.error("model list failed: \(error, privacy: .public)")
@@ -79,42 +90,64 @@ final class ModelStore {
         }
     }
 
-    func download(_ id: String) async {
-        guard downloading[id] == nil else { return }
+    /// Downloads `id` and says whether the bytes actually landed.
+    ///
+    /// A `.failed` event does not throw, so the stream ends normally after one.
+    /// The verdict is carried out of the loop rather than left in `lastError`,
+    /// which the tail of a clean run has to clear.
+    @discardableResult
+    func download(_ id: String) async -> Bool {
+        guard downloading[id] == nil else { return false }
         downloading[id] = 0
         defer { downloading[id] = nil }
+        var failure: String?
         do {
             let stream = try await RunAnywhere.models.download(id: id)
             for try await event in stream {
-                switch event {
-                case .started:
-                    downloading[id] = 0
-                case .progress(let snapshot):
-                    if let percent = snapshot.percent {
-                        downloading[id] = min(max(Double(percent) / 100, 0), 1)
-                    }
-                case .verifying:
-                    downloading[id] = 1
-                case .extracting(_, _, let percent):
-                    downloading[id] = percent.map { min(max(Double($0) / 100, 0), 1) } ?? 1
-                case .completed:
-                    downloading[id] = 1
-                    // Refresh inside the stream, not only after it: the loop can
-                    // stay open for verification and extraction, and the row
-                    // should flip to Installed the moment the bytes are down.
-                    await refresh()
-                case .failed(_, _, let error):
-                    lastError = error.message
-                case .cancelled:
-                    break
+                if let message = await apply(event, to: id) {
+                    failure = message
                 }
             }
             await refresh()
-            lastError = nil
+            lastError = failure
         } catch {
             logger.error("download failed for \(id, privacy: .public): \(error, privacy: .public)")
             lastError = String(describing: error)
         }
+        return models.first { $0.id == id }?.isDownloaded == true
+    }
+
+    /// Folds one download event into `downloading`, returning a message when
+    /// the event says this download will not finish.
+    private func apply(_ event: DownloadEvent, to id: String) async -> String? {
+        switch event {
+        case .started:
+            downloading[id] = 0
+        case .progress(let snapshot):
+            if let percent = snapshot.percent {
+                downloading[id] = Self.fraction(percent)
+            }
+        case .verifying:
+            downloading[id] = 1
+        case .extracting(_, _, let percent):
+            downloading[id] = percent.map(Self.fraction) ?? 1
+        case .completed:
+            downloading[id] = 1
+            // Refresh inside the stream, not only after it: the loop can stay
+            // open for verification and extraction, and the row should flip to
+            // Installed the moment the bytes are down. The catalog alone is
+            // enough for that, and it skips the storage walk mid-download.
+            await refreshCatalog()
+        case .failed(_, _, let error):
+            return error.message
+        case .cancelled:
+            return "Download cancelled."
+        }
+        return nil
+    }
+
+    private static func fraction(_ percent: some BinaryFloatingPoint) -> Double {
+        min(max(Double(percent) / 100, 0), 1)
     }
 
     func name(for id: String) -> String {
@@ -147,6 +180,46 @@ final class ModelStore {
             (model.purpose == .language || model.purpose == .vision)
                 && (model.isDownloaded || model.isBuiltIn)
         }
+    }
+
+    /// Whether a first launch has anything worth offering.
+    ///
+    /// One downloaded model is the evidence that somebody has used this install
+    /// before, and it is deliberately not `hasChatCapableModel`: Apple's model
+    /// is built in and satisfies that on every recent Mac, which would hide
+    /// setup from exactly the fresh installs it exists for. False on an empty
+    /// catalog too, where the screen is a blank list and a dead button.
+    var needsSetup: Bool {
+        guard hasLoaded, !models.contains(where: { $0.isDownloaded && !$0.isBuiltIn }) else {
+            return false
+        }
+        return !SetupPlan.candidates(from: raw).isEmpty
+    }
+
+    /// The default for a modality, when it is actually on the device.
+    ///
+    /// The shipped list first, then curation. Curation ranks by what the device
+    /// can bear and has no opinion about what a model is for, which is how
+    /// "attach an image" came to offer a computer-use agent; the shipped list
+    /// is where that opinion lives.
+    func recommendedInstalledID(for purpose: ModelPurpose) -> String? {
+        if let model = ShippedModels.installed(for: purpose, from: raw) {
+            return model.id
+        }
+        guard let shortlist = shortlists.first(where: { $0.purpose == purpose }),
+              let id = shortlist.recommendedID,
+              installed.contains(where: { $0.id == id }) else {
+            return nil
+        }
+        return id
+    }
+
+    /// Whether this app would choose `model` for its modality.
+    ///
+    /// Asked of every browsable row, including ones not downloaded, so the
+    /// shipped pick is visible before anybody commits to a download.
+    func isDefault(_ model: ModelInfo) -> Bool {
+        ShippedModels.matches(model, from: raw)
     }
 
     var isDownloading: Bool { !downloading.isEmpty }

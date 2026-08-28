@@ -27,6 +27,8 @@ struct WorkflowScreen: View {
     @State private var isPickingTemplate = false
     @State private var exportRequest: WorkflowExportRequest?
     @State private var packEditor: WorkflowPackEditorMode?
+    @State private var connectors = ConnectorStore()
+    @State private var isManagingConnectors = false
     @Environment(\.undoManager)
     private var undoManager
 
@@ -49,6 +51,9 @@ struct WorkflowScreen: View {
             viewModel.scheduleValidation()
         }
         .onAppear { viewModel.undoManager = undoManager }
+        .sheet(isPresented: $isManagingConnectors) {
+            ConnectorsSheet(store: connectors) { isManagingConnectors = false }
+        }
         .onChange(of: undoManager) { _, manager in viewModel.undoManager = manager }
         .alert(
             "This workflow couldn't be saved, loaded or run",
@@ -82,13 +87,14 @@ struct WorkflowScreen: View {
 
     private var editor: some View {
         HSplitView {
-            WorkflowPalette(viewModel: viewModel) { item in
-                addFromPalette(item)
-            } onLoad: { workflowID in
-                open(workflowID)
-            } onExport: { workflowID in
-                exportRequest = WorkflowExportRequest(selection: [workflowID])
-            }
+            WorkflowPalette(
+                viewModel: viewModel,
+                connectors: connectors,
+                onAdd: addFromPalette,
+                onLoad: open,
+                onExport: { exportRequest = WorkflowExportRequest(selection: [$0]) },
+                onManageConnectors: { isManagingConnectors = true }
+            )
             .frame(minWidth: 200, idealWidth: 224, maxWidth: 280)
 
             canvas

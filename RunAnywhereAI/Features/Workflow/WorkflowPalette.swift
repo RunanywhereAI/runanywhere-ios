@@ -30,9 +30,11 @@ enum WorkflowPaletteItem: Codable, Transferable, Hashable {
 
 struct WorkflowPalette: View {
     var viewModel: WorkflowEditorViewModel
+    var connectors: ConnectorStore
     let onAdd: (WorkflowPaletteItem) -> Void
     let onLoad: (String) -> Void
     let onExport: (String) -> Void
+    let onManageConnectors: () -> Void
 
     private var scheduler: WorkflowScheduler { WorkflowScheduler.shared }
     private var packStore: WorkflowPackStore { viewModel.packStore }
@@ -52,6 +54,8 @@ struct WorkflowPalette: View {
             }
 
             packLibrarySection
+
+            connectorSection
 
             if !scheduler.entries.isEmpty {
                 Section("Scheduled") {
@@ -189,6 +193,60 @@ struct WorkflowPalette: View {
             .help("Uninstall this pack. Nodes that use it become placeholders.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Connectors
+
+    /// Saved connections, listed here rather than anywhere else in the app:
+    /// they exist to be pointed at by a workflow, so this is where they belong.
+    @ViewBuilder private var connectorSection: some View {
+        Section("Connectors") {
+            if connectors.connectors.isEmpty {
+                Text("Nothing connected yet")
+                    .appType(.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+            } else {
+                ForEach(connectors.connectors) { connector in
+                    connectorRow(connector)
+                }
+            }
+            Button(action: onManageConnectors) {
+                Label("Manage connectors", systemImage: "plus.circle")
+                    .appType(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(AppColors.brand)
+        }
+    }
+
+    private func connectorRow(_ connector: Connector) -> some View {
+        HStack(spacing: Space.sm) {
+            rowIcon(connector.type?.symbol ?? "network", tint: AppColors.textSecondary)
+
+            VStack(alignment: .leading, spacing: Space.hair) {
+                Text(connector.name)
+                    .appType(.body)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineLimit(1)
+                Text(connector.url?.absoluteString ?? "Not configured")
+                    .appType(.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: Space.xs)
+
+            if connectors.probing.contains(connector.id) {
+                ProgressView().controlSize(.small)
+            } else if let probe = connectors.probes[connector.id] {
+                Circle()
+                    .fill(probe.isGood ? AppColors.success : AppColors.danger)
+                    .frame(width: Space.sm, height: Space.sm)
+                    .help(probe.summary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { onManageConnectors() }
     }
 
     // MARK: - Schedules

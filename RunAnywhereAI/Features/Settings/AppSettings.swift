@@ -47,12 +47,22 @@ final class AppSettings {
         }
     }
 
+    /// Whether the first-launch setup has been answered. Skipping counts:
+    /// somebody who declined the download should not be asked again on every
+    /// launch, and chat still offers a model when they get there.
+    var hasCompletedSetup: Bool {
+        didSet { UserDefaults.standard.set(hasCompletedSetup, forKey: Key.setupDone) }
+    }
+
     private enum Key {
         static let theme = "app.theme"
         static let mode = "app.mode"
+        static let setupDone = "app.setup.completed"
     }
 
     init() {
+        hasCompletedSetup = UserDefaults.standard.bool(forKey: Key.setupDone)
+
         let rawTheme = UserDefaults.standard.string(forKey: Key.theme) ?? AppTheme.system.rawValue
         theme = AppTheme(rawValue: rawTheme) ?? .system
 

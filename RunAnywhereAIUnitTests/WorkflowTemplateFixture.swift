@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import XCTest
 @testable import RunAnywhereAI
 
 /// One template's real inputs and its real expected outputs.
@@ -24,34 +23,49 @@ struct Fixture {
     /// A last chance to fill in anything a template deliberately ships blank.
     var adjust: (inout WorkflowNode) -> Void = { _ in }
 
+    struct Wrong: Error, CustomStringConvertible {
+        let description: String
+        init(_ description: String) { self.description = description }
+    }
+
+    /// Everything here throws rather than asserting, so a failure travels back
+    /// to the one place that also prints the trace explaining it.
     func verify(files: [String], in sandbox: URL, template: String) throws {
-        XCTAssertFalse(files.isEmpty, "\(template) writes nothing, so nothing was checked")
-        for name in files {
+        guard !files.isEmpty else { throw Wrong("writes nothing, so nothing was checked") }
+
+        // A template that branches writes one file, not all of them: "Sort a
+        // note by urgency" sends the note down the urgent path or the later
+        // path, never both. So what is required is that a run wrote something,
+        // and that whatever it wrote is sound — demanding every declared output
+        // would fail every workflow with a condition in it.
+        let present = files.filter {
+            FileManager.default.fileExists(atPath: sandbox.appendingPathComponent($0).path)
+        }
+        guard !present.isEmpty else {
+            throw Wrong("wrote none of the files it declares: \(files.joined(separator: ", "))")
+        }
+
+        for name in present {
             let path = sandbox.appendingPathComponent(name)
             guard let written = try? String(contentsOf: path, encoding: .utf8) else {
-                XCTFail("\(template) did not write \(name)")
-                continue
+                throw Wrong("could not read back \(name)")
             }
-            XCTAssertFalse(
-                written.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                "\(template) wrote \(name) but left it empty"
-            )
+            guard !written.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw Wrong("wrote \(name) but left it empty")
+            }
             // An unresolved placeholder means a prompt variable named a node
             // that produced nothing — the run "succeeds" and writes the
             // template's own syntax into the reader's file.
-            XCTAssertFalse(
-                written.contains("{{"),
-                "\(template) left an unresolved placeholder in \(name): " + written.prefix(200)
-            )
-            XCTAssertTrue(
-                isAcceptable(written, template: template),
-                "\(template) wrote \(name), but it does not look like the job was done: "
-                    + written.prefix(200)
-            )
+            guard !written.contains("{{") else {
+                throw Wrong("left an unresolved placeholder in \(name): \(written.prefix(120))")
+            }
+            guard expect(written) else {
+                throw Wrong("wrote \(name), but it does not look like the job was done: "
+                    + written.prefix(120))
+            }
         }
     }
 
-    private func isAcceptable(_ text: String, template: String) -> Bool { expect(text) }
 }
 
 extension Fixture {

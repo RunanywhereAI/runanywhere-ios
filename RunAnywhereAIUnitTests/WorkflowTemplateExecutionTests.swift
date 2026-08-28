@@ -62,6 +62,22 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
         }
         note("model \(model)")
 
+        // One throwaway generation before anything is measured. The first
+        // template in a fresh process kept writing an empty file while the same
+        // template passed three times over once something else had run — so
+        // this is here to find out whether a freshly loaded model answers its
+        // first question, and to stop that being the first template's problem.
+        // One template run and thrown away before anything is measured. A lone
+        // run after a fresh init can come back with an empty answer — see
+        // `testASingleGenerateNodeRunOnceProducesOutput`, which pins that on
+        // its own. Without this, whichever template happened to go first wore
+        // the blame for it.
+        if let first = WorkflowTemplateLibrary.templates.first(where: { Fixture.plan(for: $0.name) != nil }),
+           let plan = Fixture.plan(for: first.name) {
+            _ = try? await run(first, plan: plan, model: model)
+            note("warm-up run of \(first.name) discarded")
+        }
+
         var ran = 0
         var failures: [String] = []
 
@@ -98,6 +114,41 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
 
     private func note(_ text: String) {
         trace.append(text)
+    }
+
+    /// A single generate node, run once, must answer.
+    ///
+    /// It does not, reliably. Run this template three times and all three
+    /// answer; run it exactly once after a fresh init and it writes an empty
+    /// file. Reversing the order of the suite made the failure move to
+    /// whichever template went first, which is what ruled out the template
+    /// itself. What it has not yet ruled out is what makes a lone run
+    /// different from the first of several — that is the open question.
+    ///
+    /// Kept as its own test so the bug keeps a name and a reproduction instead
+    /// of being absorbed by the warm-up the suite above now does. It is
+    /// expected to be red until the empty answer is explained.
+    @MainActor
+    func testASingleGenerateNodeRunOnceProducesOutput() async throws {
+        try await bootSDK()
+        guard let model = try await loadLanguageModel() else {
+            throw XCTSkip("No language model is installed on this machine.")
+        }
+        let template = try XCTUnwrap(
+            WorkflowTemplateLibrary.templates.first { $0.name == "Summarise a document" }
+        )
+        let plan = try XCTUnwrap(Fixture.plan(for: template.name))
+
+        let (record, files) = try await run(template, plan: plan, model: model)
+        let written = files.compactMap {
+            try? String(contentsOf: sandbox.appendingPathComponent($0), encoding: .utf8)
+        }.first ?? ""
+
+        XCTAssertFalse(
+            written.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            "a lone run wrote nothing. state=\(record.state), "
+                + "nodes=\(record.nodeRuns.map { "\($0.nodeID):\($0.state)" }.joined(separator: ","))"
+        )
     }
 
     /// The same template, three times over, in one process.
@@ -257,8 +308,18 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
                     break
                 }
             }
-            if !graph.nodes[index].settings.modelID.isEmpty {
+            // Bound on every node that generates, including the ones that ship
+            // with it blank. An empty model id makes the engine answer with
+            // "whatever is currently loaded", which is not something a test can
+            // assert on — and `ensure_model_loaded` returns success without
+            // loading anything at all when the id is empty.
+            switch node.kind {
+            case .llmGenerate, .llmStructured:
                 graph.nodes[index].settings.modelID = model
+            default:
+                if !graph.nodes[index].settings.modelID.isEmpty {
+                    graph.nodes[index].settings.modelID = model
+                }
             }
             plan.adjust(&graph.nodes[index])
         }

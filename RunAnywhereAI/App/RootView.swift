@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppScreen {
     case intro
+    case setup
     case home
 }
 
@@ -26,8 +27,17 @@ struct RootView: View {
                 switch screen {
                 case .intro:
                     IntroScreen(bootstrap: bootstrap) {
-                        withAnimation(.easeOut(duration: 0.28)) { screen = .home }
+                        // The catalog is read here rather than on the far side,
+                        // because whether setup has anything to offer is what
+                        // decides which screen comes next. The intro stays up
+                        // meanwhile, which is what it is for.
+                        Task {
+                            await store.refreshCatalog()
+                            go(settings.hasCompletedSetup || !store.needsSetup ? .home : .setup)
+                        }
                     }
+                case .setup:
+                    SetupScreen(store: store, settings: settings) { go(.home) }
                 case .home:
                     HomeScreen(store: store, tab: $tab)
                         .task { await store.refresh() }
@@ -44,5 +54,9 @@ struct RootView: View {
             .transition(.opacity)
         }
         .animation(Motion.fade, value: settings.mode)
+    }
+
+    private func go(_ destination: AppScreen) {
+        withAnimation(.easeOut(duration: 0.28)) { screen = destination }
     }
 }

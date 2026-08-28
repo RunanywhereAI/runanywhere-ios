@@ -34,6 +34,14 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
+        let ids = cleanup
+        cleanup = []
+        let done = expectation(description: "workflows removed")
+        Task {
+            for id in ids { try? await RunAnywhere.workflows.delete(id: id) }
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 30)
         try? FileManager.default.removeItem(at: sandbox)
     }
 
@@ -80,9 +88,58 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
     /// reach `xcodebuild`, so anything worth reading has to travel in the
     /// failure message.
     private var trace: [String] = []
+    /// Workflow ids to remove once every run in a test has finished.
+    private var cleanup: [String] = []
+
+    struct Trouble: Error, CustomStringConvertible {
+        let description: String
+        init(_ description: String) { self.description = description }
+    }
 
     private func note(_ text: String) {
         trace.append(text)
+    }
+
+    /// The same template, three times over, in one process.
+    ///
+    /// Written because the suite kept failing on a different template each run
+    /// while the code under it did not change: one pass would summarise fine
+    /// and the next would write an empty file. That is not a template problem,
+    /// and running one template repeatedly is the shortest way to tell a flaky
+    /// engine from a flaky prompt.
+    @MainActor
+    func testTheSameTemplateGivesTheSameAnswerThreeTimesRunning() async throws {
+        try await bootSDK()
+        guard let model = try await loadLanguageModel() else {
+            throw XCTSkip("No language model is installed on this machine.")
+        }
+        let template = try XCTUnwrap(
+            WorkflowTemplateLibrary.templates.first { $0.name == "Summarise a document" }
+        )
+        let plan = try XCTUnwrap(Fixture.plan(for: template.name))
+
+        var outcomes: [String] = []
+        for attempt in 1 ... 3 {
+            do {
+                let (record, files) = try await run(template, plan: plan, model: model)
+                let failed = record.nodeRuns.filter { $0.state == .failed }
+                    .map { "\($0.nodeID):\($0.error.message)" }.joined(separator: ",")
+                let written = files.compactMap {
+                    try? String(contentsOf: sandbox.appendingPathComponent($0), encoding: .utf8)
+                }.first ?? ""
+                outcomes.append(
+                    "run \(attempt): state=\(record.state) failed=[\(failed)] wrote=\(written.count) chars"
+                )
+            } catch {
+                outcomes.append("run \(attempt): threw \(error)")
+            }
+        }
+
+        let consistent = Set(outcomes.map { $0.contains("failed=[]") }).count == 1
+        XCTAssertTrue(consistent, "the same template did not behave the same way:\n"
+            + outcomes.joined(separator: "\n"))
+        XCTAssertTrue(outcomes.allSatisfy { $0.contains("failed=[]") },
+            outcomes.joined(separator: "\n"))
     }
 
     // MARK: - Running one
@@ -95,10 +152,12 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
         let expectedFiles = try rewrite(&graph, with: plan, model: model)
 
         // Ids become path components, so the store refuses anything with a
-        // space in it. Template ids are display names, hence the slug.
-        let id = "test-" + template.name.lowercased().map {
+        // space in it. Template ids are display names, hence the slug — and the
+        // suffix, because two runs of the same template must not share an id.
+        let slug = template.name.lowercased().map {
             $0.isLetter || $0.isNumber ? String($0) : "-"
         }.joined()
+        let id = "test-\(slug)-\(UUID().uuidString.prefix(8))"
         let document = WorkflowDocumentMapping.document(
             id: id, name: template.name, graph: graph, createdAtMs: 0
         )
@@ -106,12 +165,16 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
         // Saved before running because `run` takes an id, not a document: the
         // engine reads what is stored, so an unsaved edit would not be executed.
         try await RunAnywhere.workflows.save(document)
+        // Deleted at the end of the run, awaited. A detached cleanup task raced
+        // the next run and deleted the workflow it had just saved, which
+        // surfaced as "run_create_proto failed: Not found" on the run after any
+        // successful one — an engine bug that was nothing of the sort.
+        defer { cleanup.append(id) }
         // Read it straight back. If this succeeds and the run still cannot find
         // the workflow, the two halves disagree about where storage lives.
         let readBack = (try? await RunAnywhere.workflows.load(id: id))?.id ?? "<missing>"
         let listed = ((try? await RunAnywhere.workflows.list()) ?? []).map(\.id)
         note("saved \(id); load=\(readBack); list=\(listed.joined(separator: ","))")
-        defer { Task { try? await RunAnywhere.workflows.delete(id: id) } }
 
         let handle = try await RunAnywhere.workflows.run(workflowID: id)
         defer { handle.destroy() }
@@ -143,8 +206,14 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
         let detail = failed
             .map { "\($0.nodeID): \($0.error.message)" }
             .joined(separator: "; ")
-        XCTAssertTrue(failed.isEmpty, "\(template.name) had failing nodes: \(detail)")
-        XCTAssertEqual(record.state, .succeeded, "\(template.name) did not finish: \(detail)")
+        // Thrown, not asserted, so every outcome lands in one place and the
+        // trace that explains it is printed with it.
+        guard failed.isEmpty else {
+            throw Trouble("had failing nodes: \(detail)")
+        }
+        guard record.state == .succeeded else {
+            throw Trouble("did not finish: state=\(record.state) \(detail)")
+        }
 
         // Every node that ran has to have produced something. A node that
         // succeeds with no output is how an empty prompt variable reaches the
@@ -205,15 +274,43 @@ final class WorkflowTemplateExecutionTests: XCTestCase {
         _ = try? await RunAnywhere.models.refresh()
     }
 
-    /// Loads the model the app would choose, and returns its id.
+    /// Loads the best chat model this machine can actually run, and returns
+    /// its id.
+    ///
+    /// Not the shipped default, and not simply the largest either. The default
+    /// is chosen to run anywhere, which for structured output means one that
+    /// cannot reliably produce schema-valid JSON — that failure measures the
+    /// model, not the workflow. But "largest" picked a 27B that exhausted
+    /// memory and failed generation outright, which measures the machine.
+    ///
+    /// So: models that advertise tool support, because that is the same
+    /// discipline structured output needs, and among those the largest that
+    /// still leaves the machine room to run it.
     @MainActor
     private func loadLanguageModel() async throws -> String? {
         let catalog = (try? await RunAnywhere.models.list()) ?? []
-        guard let pick = ShippedModels.installed(for: .language, from: catalog)
-            ?? catalog.first(where: {
-                ModelPurpose.of($0) == .language && !$0.localPath.isEmpty && $0.isAvailableForUse
-            })
-        else { return nil }
+        // A third of RAM let a 16 GB 27B through, and it failed generation
+        // outright: the weights are only part of what a run costs, and the KV
+        // cache for a long prompt is the rest. A sixth, capped at 8 GB, keeps
+        // the choice to models that have room to actually answer.
+        let ceiling = min(Int64(ProcessInfo.processInfo.physicalMemory / 6), 8_000_000_000)
+
+        let installed = catalog.filter {
+            ModelPurpose.of($0) == .language
+                && !$0.localPath.isEmpty
+                && $0.isAvailableForUse
+                && !$0.isLoRAAdapterArtifact
+                && $0.consumerSizeBytes < ceiling
+        }
+        let capable = installed.filter {
+            ToolCapability.supports(id: $0.id, name: $0.name, downloadBytes: $0.downloadSizeBytes)
+        }
+        let field = capable.isEmpty ? installed : capable
+
+        guard let pick = field.max(by: { $0.consumerSizeBytes < $1.consumerSizeBytes }) else {
+            return nil
+        }
+        note("chose \(pick.id) (\(pick.consumerSizeBytes / 1_000_000) MB, ceiling \(ceiling / 1_000_000) MB)")
         _ = try await RunAnywhere.models.load(id: pick.id)
         return pick.id
     }

@@ -30,6 +30,9 @@ enum ComposerAction {
     case talk
     case resolveBlocked
     case chooseModel
+    case acceptModelSwitch
+    case declineModelSwitch
+    case voiceMode
 }
 
 struct ChatComposer: View {
@@ -89,6 +92,7 @@ struct ChatComposer: View {
             model.attachmentRejection ?? "",
             model.notice ?? "",
             model.staged?.filename ?? "",
+            model.modelSwitch?.modelID ?? "",
             model.stagedDetail,
             model.toolsUnavailableMessage ?? "",
             model.isStopping ? "stopping" : "",
@@ -155,9 +159,18 @@ struct ChatComposer: View {
                 detail: model.stagedDetail
             ) {
                 StripButton(symbol: "xmark", label: "Remove attachment") {
-                    model.staged = nil
+                    model.removeAttachment()
                 }
             }
+            .transition(.composerStrip)
+        }
+
+        if let offer = model.modelSwitch {
+            ModelSwitchStrip(
+                offer: offer,
+                onAccept: { onAction(.acceptModelSwitch) },
+                onDecline: { onAction(.declineModelSwitch) }
+            )
             .transition(.composerStrip)
         }
 
@@ -280,6 +293,15 @@ struct ChatComposer: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dictate")
+
+            // Two different things share this corner: the microphone types for
+            // you, this holds a conversation. Voice mode used to be reachable
+            // only from the More screen, which developer mode hides.
+            Button { onAction(.voiceMode) } label: {
+                ComposerGlyph(symbol: "waveform.circle", isEmphasised: false)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Voice mode")
 
             sendButton
         }

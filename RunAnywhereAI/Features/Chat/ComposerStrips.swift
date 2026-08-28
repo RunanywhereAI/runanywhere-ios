@@ -65,6 +65,36 @@ struct StripButton: View {
     }
 }
 
+/// The offer to change model because of what was just attached.
+///
+/// Two answers, and both are real: take the model that can read the file, or
+/// drop the file and keep the model. There is no third option where a text
+/// model answers a picture, which is what the app used to do.
+struct ModelSwitchStrip: View {
+    let offer: AttachmentModelOffer
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        ComposerStrip(
+            symbol: "arrow.triangle.2.circlepath",
+            tint: AppColors.brand,
+            wash: AppColors.brandMuted,
+            title: "Switch to \(offer.modelLabel)?",
+            detail: offer.reason
+        ) {
+            HStack(spacing: Space.xs) {
+                Button("Switch", action: onAccept)
+                    .appType(.caption)
+                    .fontWeight(.semibold)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(AppColors.brand)
+                StripButton(symbol: "xmark", label: "Keep the current model", action: onDecline)
+            }
+        }
+    }
+}
+
 extension AnyTransition {
     static var composerStrip: AnyTransition {
         .move(edge: .bottom).combined(with: .opacity)

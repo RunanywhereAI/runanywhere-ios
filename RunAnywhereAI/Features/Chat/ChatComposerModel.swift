@@ -58,6 +58,10 @@ final class ChatComposerModel {
         }
     }
     var staged: ChatAttachment?
+    /// Set while a staged attachment needs a model the reader has not chosen.
+    /// Send stays blocked until they answer it, so an image is never handed to
+    /// a model that cannot see.
+    var modelSwitch: AttachmentModelOffer?
     var indexState: DocumentIndexState = .idle
     var toolsUnavailableMessage: String?
     var hasModel = false
@@ -73,7 +77,7 @@ final class ChatComposerModel {
     }
 
     var canSend: Bool {
-        guard hasModel, blockedReason == nil else { return false }
+        guard hasModel, blockedReason == nil, modelSwitch == nil else { return false }
         return hasTrimmedDraft || staged != nil
     }
 
@@ -127,6 +131,7 @@ final class ChatComposerModel {
 
     func removeAttachment() {
         staged = nil
+        modelSwitch = nil
     }
 
     func dismissRejection() {

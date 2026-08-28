@@ -193,7 +193,7 @@ final class ChatViewModel {
     private func prepareSession(for attachment: ChatAttachment, body: String) async throws -> RagSession {
         guard let embeddingModelID else {
             throw AttachmentError.unsupported(
-                "No embedding model is selected. Pick one under Settings, Default models, Documents."
+                "Asking a document questions needs an embedding model. Open Manage Models and download one."
             )
         }
         let key = "\(attachment.id)|\(embeddingModelID)|\(loadedModelName ?? "")"

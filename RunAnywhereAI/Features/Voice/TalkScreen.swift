@@ -1,12 +1,20 @@
 import SwiftUI
 
 struct TalkScreen: View {
+    /// Where a finished exchange goes. Nil in the More hub, which has no
+    /// conversation to put one in.
+    var onTurn: ((String, String) -> Void)?
+
     @Environment(ModelStore.self) private var store
 
     @State private var model = TalkViewModel()
     @State private var picking: VoiceSlot?
 
     var body: some View {
+        content.onAppear { model.onTurn = onTurn }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Space.xl) {
                 stage

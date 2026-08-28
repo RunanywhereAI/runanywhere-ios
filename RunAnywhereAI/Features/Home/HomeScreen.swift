@@ -31,6 +31,7 @@ struct HomeScreen: View {
     @State private var isPickingWorkflowTemplate = false
     @Environment(AppSettings.self) private var settings
     @State private var importing: AttachmentImport?
+    @State private var isVoiceModeOpen = false
 
     /// The saved-workflow library, read straight off the editor so the
     /// sidebar and the canvas can never disagree about what exists.
@@ -119,6 +120,13 @@ struct HomeScreen: View {
             onSelect: assignPurposeModel,
             onManage: { withAnimation(.easeInOut(duration: 0.2)) { tab = .models } }
         )
+        .sheet(isPresented: $isVoiceModeOpen) {
+            VoiceModeSheet(
+                onClose: { isVoiceModeOpen = false },
+                onTurn: recordSpokenTurn
+            )
+            .environment(store)
+        }
     }
 
     // MARK: - Screens
@@ -179,7 +187,13 @@ struct HomeScreen: View {
         ))
         .onChange(of: store.models.count) { _, _ in syncCapabilities() }
         .onChange(of: store.loadedLanguageModel) { _, model in adoptLoaded(model) }
-        .task { adoptLoaded(store.loadedLanguageModel) }
+        .task {
+            adoptLoaded(store.loadedLanguageModel)
+            await ensureDefaults()
+        }
+        // Both, and neither is redundant: the catalog can already be read by the
+        // time this screen appears, and it can also arrive long after.
+        .onChange(of: store.raw.count) { _, _ in Task { await ensureDefaults() } }
     }
 
     private var chatTopBar: some View {
@@ -320,11 +334,20 @@ struct HomeScreen: View {
         ) { showModelPicker.toggle() }
             .modelPicker(
                 isPresented: $showModelPicker,
-                models: store.installed.filter { $0.purpose == .language || $0.purpose == .vision },
+                models: pickableModels,
                 activeID: activeModelID,
                 onSelect: select,
                 onManage: { withAnimation(.easeInOut(duration: 0.2)) { tab = .models } }
             )
+    }
+
+    /// Chat models and vision models, narrowed to vision alone while an image
+    /// is staged: offering a text model there is offering one that will not
+    /// answer the picture.
+    private var pickableModels: [InstalledModel] {
+        let usable = store.installed.filter { $0.purpose == .language || $0.purpose == .vision }
+        guard composer.staged?.isImage == true else { return usable }
+        return usable.filter { $0.purpose == .vision }
     }
 
     private func select(_ model: InstalledModel) {
@@ -353,6 +376,29 @@ struct HomeScreen: View {
         select(model)
     }
 
+    /// Settles which model answers for each modality, then starts the one that
+    /// answers chat.
+    private func ensureDefaults() async {
+        guard store.hasLoaded else { return }
+        defaults.seed(from: store.raw)
+        await startDefaultModel()
+    }
+
+    /// Brings the default chat model up when nothing else is running.
+    ///
+    /// Having a default and acting on it are different things: the app opened
+    /// on "Choose a model to start" while holding a perfectly good answer to
+    /// that question. Nothing happens once a model is active, so this cannot
+    /// take the session away from a model the reader picked.
+    private func startDefaultModel() async {
+        guard activeModelID == nil, let id = defaults.llmID,
+              let model = store.models.first(where: { $0.id == id }), model.isAvailable else {
+            return
+        }
+        guard await defaults.ensureLoaded(id, category: .language) else { return }
+        adoptLoaded(model)
+    }
+
     private func adoptLoaded(_ model: InstalledModel?) {
         guard let model, activeModelID == nil else { return }
         activeModelID = model.id
@@ -375,6 +421,7 @@ struct HomeScreen: View {
     }
 
     private func applyCapabilities(of model: InstalledModel) {
+        applyReadiness(for: composer.staged)
         withAnimation(.easeInOut(duration: 0.2)) {
             let isVision = model.purpose == .vision
             // A vision model answers through the VLM component, and reasoning
@@ -422,6 +469,22 @@ struct HomeScreen: View {
             chat.adopt(conversations.turns(for: id))
             tab = .chat
         }
+    }
+
+    /// Puts a spoken exchange into the conversation on screen.
+    ///
+    /// Voice mode used to answer and forget: a whole conversation could happen
+    /// out loud and leave the chat empty behind it. The same two turns a typed
+    /// exchange would leave, written the same way, so closing the sheet lands
+    /// on a history that already has them.
+    private func recordSpokenTurn(heard: String, answered: String) {
+        let id = conversations.currentID ?? conversations.createConversation().id
+        selection = id
+        var turns = conversations.turns(for: id)
+        turns.append(ChatTurn(role: .user, text: heard))
+        turns.append(ChatTurn(role: .assistant, text: answered))
+        conversations.update(id: id, turns: turns)
+        chat.adopt(turns)
     }
 
     private func newConversation() {
@@ -539,6 +602,12 @@ struct HomeScreen: View {
             importing = .document
         case .attachImage:
             importing = .image
+        case .voiceMode:
+            isVoiceModeOpen = true
+        case .acceptModelSwitch:
+            acceptModelSwitch()
+        case .declineModelSwitch:
+            declineModelSwitch()
         case .liveCamera, .resolveBlocked, .chooseModel:
             break
         }
@@ -584,11 +653,58 @@ struct HomeScreen: View {
                     composer.staged = attachment
                     composer.indexState = .idle
                     composer.notice = nil
+                    applyReadiness(for: attachment)
                 }
             } catch {
                 composer.noticeKind = .attachment
                 composer.notice = error.localizedDescription
             }
+        }
+    }
+
+    /// Asks the switch rule about the staged attachment and puts the answer on
+    /// screen. Called on attach and again whenever the loaded model changes, so
+    /// choosing a vision model by hand clears the offer rather than leaving a
+    /// prompt for something already done.
+    private func applyReadiness(for attachment: ChatAttachment?) {
+        guard let attachment else {
+            composer.modelSwitch = nil
+            return
+        }
+        switch AttachmentModelSwitch.readiness(
+            for: attachment,
+            activeModelID: activeModelID,
+            installed: store.installed,
+            preferredVisionID: defaults.resolveVision(from: store.installed)
+                ?? store.recommendedInstalledID(for: .vision),
+            embeddingModelID: defaults.resolveEmbedding(from: store.installed)
+        ) {
+        case .ready:
+            composer.modelSwitch = nil
+        case .offer(let offer):
+            composer.modelSwitch = offer
+        case .missing(let reason):
+            composer.modelSwitch = nil
+            composer.noticeKind = .attachment
+            composer.notice = reason
+        }
+    }
+
+    private func acceptModelSwitch() {
+        guard let offer = composer.modelSwitch,
+              let model = store.models.first(where: { $0.id == offer.modelID }) else {
+            composer.modelSwitch = nil
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.22)) { composer.modelSwitch = nil }
+        select(model)
+    }
+
+    /// Declining keeps the reader's model and drops the attachment, because the
+    /// pair cannot both stay: this model is the one that cannot answer it.
+    private func declineModelSwitch() {
+        withAnimation(.easeInOut(duration: 0.22)) {
+            composer.removeAttachment()
         }
     }
 

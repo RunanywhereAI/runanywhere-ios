@@ -38,6 +38,15 @@ final class TalkViewModel {
     private(set) var inputSilentDetail: String?
     private(set) var lastError: String?
 
+    /// Called once per completed exchange, with what was heard and what was
+    /// answered.
+    ///
+    /// Voice mode kept its turns to itself: you could hold a whole conversation
+    /// out loud and find the chat empty afterwards, as though it had happened
+    /// to a different assistant. The view model stays ignorant of where they go
+    /// — it is a voice pipeline, not a place to keep history.
+    var onTurn: ((String, String) -> Void)?
+
     private let defaults = DefaultModels()
     private let logger = Logger(subsystem: "com.runanywhere.RunAnywhereAI", category: "Talk")
     private var session: VoiceSession?
@@ -153,6 +162,9 @@ final class TalkViewModel {
 
     func stop() async {
         guard !isStopping else { return }
+        // Ending the session mid-answer still produced an answer, and dropping
+        // it would lose the one exchange the reader is most likely to want.
+        emitTurn()
         isStopping = true
         eventTask?.cancel()
         eventTask = nil
@@ -214,6 +226,10 @@ final class TalkViewModel {
     private func apply(_ state: AgentState) {
         switch state {
         case .listening:
+            // A turn ends where the next one begins. Read here rather than on
+            // `.speaking`, where the answer is still arriving, and before
+            // `.thinking`, which clears it.
+            emitTurn()
             phase = .listening
             isSpeechDetected = false
         case .thinking:
@@ -226,6 +242,15 @@ final class TalkViewModel {
             phase = .speaking
         }
         if case .speaking = state {} else { isInterrupting = false }
+    }
+
+    /// Hands the finished exchange over, once.
+    private func emitTurn() {
+        guard case .speaking = phase else { return }
+        let heard = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let answered = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !heard.isEmpty, !answered.isEmpty else { return }
+        onTurn?(heard, answered)
     }
 
     /// A dead pipeline must not keep a live microphone, so the session is

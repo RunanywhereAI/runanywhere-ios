@@ -71,8 +71,8 @@ struct ConsumerAdvancedHubView: View {
                 #endif
             }
 
-            #if canImport(UIKit)
             Section("Vision Utilities") {
+                #if canImport(UIKit)
                 NavigationLink(destination: SegmentationView()) {
                     AdvancedFeatureRow(
                         icon: "square.stack.3d.up",
@@ -81,8 +81,19 @@ struct ConsumerAdvancedHubView: View {
                         subtitle: "Split a photo into labelled regions"
                     )
                 }
+                #endif
+
+                // Not UIKit-gated: generation takes no image input, so there is
+                // no picker and the screen is identical on macOS.
+                NavigationLink(destination: ImageGenerationView()) {
+                    AdvancedFeatureRow(
+                        icon: "photo.artframe",
+                        color: AppColors.primaryAccent,
+                        title: "Image Generation",
+                        subtitle: "Paint a picture from a description"
+                    )
+                }
             }
-            #endif
 
             Section("Agents") {
                 NavigationLink(destination: VoiceAssistantView()) {

@@ -31,6 +31,32 @@ final class ModelSelectionContextTests: XCTestCase {
         XCTAssertNil(ModelSelectionContext.segmentation.allowedFrameworks)
     }
 
+    func testImageGenerationContextFiltersImageGeneration() {
+        XCTAssertEqual(ModelSelectionContext.imageGeneration.title, "Choose Image Model")
+        XCTAssertEqual(ModelSelectionContext.imageGeneration.relevantCategories, [.imageGeneration])
+        XCTAssertFalse(ModelSelectionContext.imageGeneration.supportsFolderImport)
+        // nil, not [.coreml]: the CoreML diffusion engine is the only backend
+        // that serves this category today, so an explicit allow-list would only
+        // be a second place to forget when a second one lands.
+        XCTAssertNil(ModelSelectionContext.imageGeneration.allowedFrameworks)
+    }
+
+    /// Raw RGBA in, CGImage out -- the decode path the diffusion result takes.
+    /// `Image(data:)` cannot read this buffer, so a regression here is a blank
+    /// result card rather than a crash.
+    @MainActor
+    func testRawRGBADecodesToCGImageAndRejectsShortBuffers() {
+        let width = 4, height = 3
+        let pixels = Data(repeating: 0x7F, count: width * height * 4)
+        let image = ImageGenerationViewModel.cgImage(fromRGBA: pixels, width: width, height: height)
+        XCTAssertEqual(image?.width, width)
+        XCTAssertEqual(image?.height, height)
+
+        let truncated = Data(repeating: 0x7F, count: width * height * 4 - 1)
+        XCTAssertNil(ImageGenerationViewModel.cgImage(fromRGBA: truncated, width: width, height: height))
+        XCTAssertNil(ImageGenerationViewModel.cgImage(fromRGBA: pixels, width: 0, height: height))
+    }
+
     func testCatalogContextsDoNotSupportFolderImport() {
         XCTAssertFalse(ModelSelectionContext.llm.supportsFolderImport)
         XCTAssertFalse(ModelSelectionContext.stt.supportsFolderImport)

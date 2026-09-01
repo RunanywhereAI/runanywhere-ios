@@ -10,7 +10,11 @@ final class ModelSelectionContextTests: XCTestCase {
     func testRAGEmbeddingAllowsPortableLlamaCppModels() throws {
         let frameworks = try XCTUnwrap(ModelSelectionContext.ragEmbedding.allowedFrameworks)
 
-        XCTAssertEqual(frameworks, [.llamaCpp, .onnx, .mlx])
+        // `.coreml` is NeuRT, the Apple Neural Engine. Its absence was a SILENT filter: a CoreML
+        // row passed the `relevantCategories` check and was then dropped from the picker with no
+        // error and no log, so the model downloaded, loaded and ran while nothing could offer it.
+        // SDK 0.20.32 fills NeuRT's embedding slot, so the framework now has something to drive.
+        XCTAssertEqual(frameworks, [.llamaCpp, .onnx, .mlx, .coreml])
     }
 
     func testDiarizationContextFiltersSpeakerDiarization() {

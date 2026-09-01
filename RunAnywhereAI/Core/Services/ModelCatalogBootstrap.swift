@@ -1487,6 +1487,74 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 1_600_000_000
         )
 
+        // The first ANE EMBEDDING row. docs/BUNDLE_CONTRACT.md (neurun) listed this exact bundle
+        // as the one that "loads, undrivable": its manifest parsed and its encoder graph bound,
+        // but the SDK's neurt engine filled no `embedding_ops`, so nothing could drive it. Gate B
+        // on an M4 Max: cosine vs the fp32 gold min 0.9588 / mean 0.9890, and relevant ranked
+        // above irrelevant in 4/4 gold records.
+        //
+        // NOTE: this row is only REACHABLE because ModelSelectionSheet's `.ragEmbedding` context
+        // gained `.coreml` — its allowedFrameworks was [.llamaCpp, .onnx, .mlx], so the row would
+        // have passed the `.embedding` category check and then been dropped from the picker with
+        // no error, exactly like the QHexRT models that `list()` used to hide.
+        await registerLLM(
+            id: "nemotron3-embed-1b-ane",
+            name: "Nemotron-3-Embed-1B (NeuRT / Neural Engine)",
+            url: "hf.co/runanywhere/Nemotron-3-Embed-1B-BF16_ANE",
+            framework: .coreml,
+            modality: .embedding,
+            // Peak RSS with headroom for a 16L/2048-hidden encoder at seq 128. NOT the download —
+            // commons stamps the resolver's live folder total (2.1 GB) for an HF folder ref.
+            memoryRequirement: 2_600_000_000
+        )
+
+        // The first ANE RERANK row. Its `score` graph role was outside NeuRT's manifest role
+        // vocabulary, so the published bundle was rejected before a graph was ever touched. Gate on
+        // an M4 Max: positive beats negative on 5/5 gold triples, matching the reference exactly.
+        //
+        // Reachability caveat, deliberately recorded rather than hidden: `.rerank` has NO
+        // ModelSelectionContext and no UI surface anywhere in this app, and RAG's own reranking is
+        // LLM-pointwise rather than going through the rerank primitive. So this row is selectable
+        // through the models browser but nothing consumes it yet.
+        await registerLLM(
+            id: "nv-rerankqa-1b-v2-ane",
+            name: "NV-RerankQA-1B-v2 (NeuRT / Neural Engine)",
+            url: "hf.co/runanywhere/llama-3.2-nv-rerankqa-1b-v2_ANE",
+            framework: .coreml,
+            modality: .rerank,
+            memoryRequirement: 2_800_000_000
+        )
+
+        // The first ANE VLM row. The runtime runs the vision tower, splices its 256 visual tokens
+        // over the prompt's <IMG_CONTEXT> positions, then drives the ordinary chunked text decode.
+        // Gate on an M4 Max: reproduced all 3 gold generations EXACTLY, word for word, including
+        // prompt-token counts. The app's `.vlm` picker context has allowedFrameworks nil, so this
+        // row is reachable without a filter change — unlike the embedding row above.
+        await registerLLM(
+            id: "internvl3_5-1b-ane",
+            name: "InternVL3.5 1B (NeuRT / Neural Engine)",
+            url: "hf.co/runanywhere/InternVL3_5-1B_ANE",
+            framework: .coreml,
+            modality: .multimodal,
+            memoryRequirement: 2_600_000_000
+        )
+
+        // The first ANE IMAGE-EMBEDDING row. Pixels -> vector, for retrieval and similarity —
+        // distinct from VLM (image + prompt -> text). Serves RAC_PRIMITIVE_EMBED_IMAGE, the slot
+        // promoted from reserved_slot_3 in ABI v10. Gate on an M4 Max: cosine vs the fp32 gold min
+        // 0.9919 / mean 0.9979, each augmented image ranking its original first (2/2).
+        //
+        // `.vision` is in the `.vlm` picker context's relevantCategories and that context sets
+        // allowedFrameworks nil, so this row is reachable without a filter change.
+        await registerLLM(
+            id: "siglip2-base-256-ane",
+            name: "SigLIP2 base-256 (NeuRT / Neural Engine)",
+            url: "hf.co/runanywhere/siglip2-base-patch16-256_ANE",
+            framework: .coreml,
+            modality: .vision,
+            memoryRequirement: 400_000_000
+        )
+
         // --- The SAME model on the other two accelerators -----------------------
         // LFM2.5-2.6B is registered three ways on purpose, so one model can be
         // compared across CPU (llama.cpp), GPU (MLX) and the Neural Engine

@@ -69,10 +69,14 @@ enum ModelSelectionContext {
     /// Frameworks to include. nil means all frameworks that have matching models.
     var allowedFrameworks: Set<InferenceFramework>? {
         switch self {
+        // `.coreml` is NeuRT — the Apple Neural Engine. Its absence here was a SILENT filter: a
+        // CoreML row passed the `relevantCategories` check and was then dropped with no error and
+        // no log, so the model downloaded, loaded and ran while no picker could offer it. Same
+        // failure shape as the QHexRT models that `models.list()` used to hide.
         case .ragEmbedding:
-            return [.llamaCpp, .onnx, .mlx]
+            return [.llamaCpp, .onnx, .mlx, .coreml]
         case .ragLLM:
-            return [.llamaCpp, .mlx]
+            return [.llamaCpp, .mlx, .coreml]
         default:
             return nil
         }

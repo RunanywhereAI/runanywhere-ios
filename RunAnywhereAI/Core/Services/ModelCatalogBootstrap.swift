@@ -1599,8 +1599,40 @@ enum ModelCatalogBootstrap {
         logger.info("LoRA adapters skipped: no adapter matches the current catalog")
         #endif
 
-        // Diffusion (CoreML) backend is deferred scope for
-        // Swift v1. Their model catalog entries are intentionally omitted.
+        // --- Image generation (CoreML diffusion; Apple only) --------------------
+        // Apple's palettized Stable Diffusion 1.5. The id matches the built-in
+        // diffusion registry (diffusion_model_registry.cpp) and RCLI's `sd15`
+        // row, so all three surfaces resolve the same model.
+        //
+        // `.nestedDirectory` is load-bearing. The published zip extracts to ONE
+        // directory -- coreml-stable-diffusion-v1-5-palettized_split_einsum_v2_
+        // compiled/ -- holding TextEncoder/Unet/VAEDecoder/VAEEncoder/
+        // SafetyChecker .mlmodelc plus vocab.json and merges.txt, all at that
+        // single level. That is exactly find_nested_directory()'s one-level
+        // descent. `.directoryBased` would hand the engine the extraction root
+        // and it would find no models there. (Note the repo TREE is laid out as
+        // split_einsum_v2/compiled/ -- a different shape from the zip, and easy
+        // to confuse with it.)
+        //
+        // Registering this row also retires the "Image Generation (coming soon)"
+        // placeholder: SimplifiedModelsView hides it as soon as a real
+        // .imageGeneration family is registered.
+        await registerArchive(
+            id: "stable-diffusion-v1-5-coreml",
+            name: "Stable Diffusion 1.5 (CoreML)",
+            url: "https://huggingface.co/apple/coreml-stable-diffusion-v1-5-palettized/"
+                + "resolve/main/"
+                + "coreml-stable-diffusion-v1-5-palettized_split_einsum_v2_compiled.zip",
+            framework: .coreml,
+            modality: .imageGeneration,
+            archive: .zip,
+            structure: .nestedDirectory,
+            // The download is 1.57 GB (HF file metadata). This is the RUNTIME
+            // budget, which gates can_run: split-einsum keeps the resident set
+            // near the weights, and understating it would offer the model on
+            // devices that then OOM mid-denoise.
+            memoryRequirement: 2_000_000_000
+        )
 
         logger.info("All modules and models registered")
     }

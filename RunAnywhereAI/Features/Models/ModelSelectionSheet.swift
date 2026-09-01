@@ -25,6 +25,7 @@ enum ModelSelectionContext {
     case ragLLM        // RAG generation model - LLM for answering questions
     case diarization   // Speaker diarization - BYO ONNX Sortformer
     case segmentation  // Semantic segmentation - BYO SegFormer
+    case imageGeneration  // Text-to-image - CoreML Stable Diffusion
 
     var title: String {
         switch self {
@@ -38,6 +39,7 @@ enum ModelSelectionContext {
         case .ragLLM: return "Choose Answer Model"
         case .diarization: return "Choose Diarization Model"
         case .segmentation: return "Choose Segmentation Model"
+        case .imageGeneration: return "Choose Image Model"
         }
     }
 
@@ -63,6 +65,8 @@ enum ModelSelectionContext {
             return [.speakerDiarization]
         case .segmentation:
             return [.semanticSegmentation]
+        case .imageGeneration:
+            return [.imageGeneration]
         }
     }
 
@@ -181,7 +185,7 @@ struct ModelSelectionSheet: View {
             pick = selection.recommendedVLM
         case .ragEmbedding:
             pick = selection.recommendedEmbedding
-        case .vad, .diarization, .segmentation:
+        case .vad, .diarization, .segmentation, .imageGeneration:
             // Single-model (or tiny) catalogs: put the smallest candidate in
             // Recommended so Get/Use is one tap — don't bury it behind
             // "Open source · 1 model".
@@ -197,7 +201,7 @@ struct ModelSelectionSheet: View {
     /// and list models with Get/Use inline.
     private var prefersFlatModelList: Bool {
         switch context {
-        case .vad, .diarization, .segmentation:
+        case .vad, .diarization, .segmentation, .imageGeneration:
             return true
         default:
             return filteredModels.count <= 3

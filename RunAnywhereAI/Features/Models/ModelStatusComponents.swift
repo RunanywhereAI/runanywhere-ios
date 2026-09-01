@@ -112,6 +112,7 @@ private extension ModelSelectionContext {
         case .ragLLM: return "text.bubble"
         case .diarization: return "person.2.wave.2"
         case .segmentation: return "square.3.layers.3d.down.right"
+        case .imageGeneration: return "photo.artframe"
         }
     }
 
@@ -119,7 +120,7 @@ private extension ModelSelectionContext {
         switch self {
         case .llm, .voice, .vlm, .ragLLM: return AppColors.brand
         case .stt, .diarization: return AppColors.statusGreen
-        case .tts, .segmentation: return AppColors.primaryPurple
+        case .tts, .segmentation, .imageGeneration: return AppColors.primaryPurple
         case .vad: return AppColors.primaryBlue
         case .ragEmbedding: return AppColors.primaryBlue
         }
@@ -139,6 +140,7 @@ private extension ModelSelectionContext {
         case .ragLLM: return "Answer from your documents"
         case .diarization: return "Identify who spoke"
         case .segmentation: return "Segment an image"
+        case .imageGeneration: return "Generate an image"
         }
     }
 
@@ -164,6 +166,8 @@ private extension ModelSelectionContext {
             return "Separate a recording by speaker and see who said what, on-device."
         case .segmentation:
             return "Outline the objects in an image and label them class by class."
+        case .imageGeneration:
+            return "Describe a picture and the model paints it here, entirely on this device."
         }
     }
 

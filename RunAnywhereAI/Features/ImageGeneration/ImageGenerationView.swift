@@ -160,7 +160,9 @@ struct ImageGenerationView: View {
                 Text("Guidance")
                     .font(AppTypography.caption)
                     .foregroundColor(AppColors.textSecondary)
-                Slider(value: $viewModel.guidanceScale, in: 1...15, step: 0.5)
+                Slider(value: $viewModel.guidanceScale,
+                       in: ImageGenerationViewModel.guidanceRange,
+                       step: ImageGenerationViewModel.guidanceStep)
                 Text(String(format: "%.1f", viewModel.guidanceScale))
                     .font(AppTypography.caption)
                     .foregroundColor(AppColors.textPrimary)

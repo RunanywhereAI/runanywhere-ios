@@ -47,12 +47,24 @@ final class ImageGenerationViewModel {
 
     private var generationTask: Task<Void, Never>?
 
+    /// Identifies the current generation. A cancelled task keeps running until it next
+    /// suspends, so without this its `catch`/`defer` can set `isGenerating = false` and
+    /// "Cancelled." AFTER a replacement has started — leaving the UI idle mid-generation.
+    /// Bumping the id invalidates every state write from the task it replaces.
+    private var generationID = 0
+
     private let logger = Logger(subsystem: "com.runanywhere.RunAnywhereAI", category: "ImageGeneration")
 
     /// Denoising step bounds. The Apple CoreML engine implements DDIM only
     /// (`rac_diffusion_coreml.mm`), which is stable well below 20 steps but
     /// stops improving much past 50.
     static let stepRange = 4...50
+
+    /// Classifier-free guidance bounds. Below ~1 the prompt stops steering the
+    /// result; far above ~15 SD1.5 oversaturates. A generation constraint, so it
+    /// lives here beside `stepRange` rather than inline in the view.
+    static let guidanceRange: ClosedRange<Float> = 1...15
+    static let guidanceStep: Float = 0.5
 
     var canGenerate: Bool {
         isModelLoaded && !isGenerating
@@ -106,24 +118,31 @@ final class ImageGenerationViewModel {
         guard !trimmed.isEmpty else { error = "Describe the image you want."; return }
 
         generationTask?.cancel()
-        generationTask = Task { await runGeneration(prompt: trimmed) }
+        generationID &+= 1
+        let id = generationID
+        generationTask = Task { await runGeneration(prompt: trimmed, id: id) }
     }
 
     func cancel() {
         generationTask?.cancel()
         generationTask = nil
+        generationID &+= 1   // anything the cancelled task still writes is now stale
         statusMessage = "Cancelled."
         isGenerating = false
     }
 
-    private func runGeneration(prompt trimmed: String) async {
+    private func runGeneration(prompt trimmed: String, id: Int) async {
         isGenerating = true
         error = nil
         image = nil
         currentStep = 0
         totalSteps = steps
         statusMessage = "Generating…"
-        defer { isGenerating = false }
+        defer {
+            if id == generationID {
+                isGenerating = false
+            }
+        }
 
         let negative = negativePrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         let options = ImageOptions(
@@ -136,29 +155,37 @@ final class ImageGenerationViewModel {
             let started = Date()
             let events = try await RunAnywhere.images.generateStream(prompt: trimmed, options: options)
             for try await event in events {
-                if Task.isCancelled { break }
-                switch event {
-                case .started:
-                    statusMessage = "Denoising…"
-                case let .progress(step, total, _):
-                    currentStep = step
-                    // The backend is authoritative about how many steps it
-                    // actually runs; `steps` is only what we asked for.
-                    totalSteps = total > 0 ? total : totalSteps
-                case let .completed(result):
-                    generationTimeMs = Int64((Date().timeIntervalSince(started) * 1000).rounded())
-                    seedUsed = result.seed
-                    apply(result)
-                @unknown default:
-                    break
-                }
+                if Task.isCancelled || id != generationID { break }
+                handle(event, startedAt: started)
             }
         } catch is CancellationError {
-            statusMessage = "Cancelled."
+            if id == generationID {
+                statusMessage = "Cancelled."
+            }
         } catch {
             logger.error("Image generation failed: \(error.localizedDescription)")
+            guard id == generationID else { return }
             self.error = "Image generation failed: \(error.localizedDescription)"
             statusMessage = ""
+        }
+    }
+
+    /// Apply one stream event. Only reached while this generation is still the current one.
+    private func handle(_ event: ImageEvent, startedAt started: Date) {
+        switch event {
+        case .started:
+            statusMessage = "Denoising…"
+        case let .progress(step, total, _):
+            currentStep = step
+            // The backend is authoritative about how many steps it actually
+            // runs; `steps` is only what we asked for.
+            totalSteps = total > 0 ? total : totalSteps
+        case let .completed(result):
+            generationTimeMs = Int64((Date().timeIntervalSince(started) * 1000).rounded())
+            seedUsed = result.seed
+            apply(result)
+        @unknown default:
+            break
         }
     }
 

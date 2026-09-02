@@ -1623,6 +1623,29 @@ enum ModelCatalogBootstrap {
             memoryRequirement: 400_000_000
         )
 
+        // --- OCR (CoreML; Apple Neural Engine) ----------------------------------
+        // Nemotron-OCR v1: a RegNet/FOTS detector plus a CTC recognizer, both
+        // converted to Core ML. Full-page OCR is two models and they are coupled
+        // -- the recognizer's input is a grid-sampled crop of the DETECTOR's
+        // feature map, not a line image -- so the bundle ships both and the SDK
+        // only exposes `readPage`. A recognizer-only bundle is refused by name
+        // in the manifest parser rather than half-loading.
+        //
+        // The .zip, NOT the repo root: a bare huggingface.co/<org>/<repo> URL is
+        // an HTML page, which downloads with a cheerful 100%.
+        await registerArchive(
+            id: "nemotron-ocr-v1-full-ane",
+            name: "Nemotron-OCR v1 (NeuRT / Neural Engine)",
+            url: "https://huggingface.co/runanywhere/nemotron-ocr-v1-full_ANE/resolve/main/"
+                + "nemotron-ocr-v1-full_ANE.zip",
+            framework: .coreml,
+            modality: .ocr,
+            archive: .zip,
+            structure: .nestedDirectory,
+            // 93.3 MB download; detector + recognizer + an 855-entry charset resident.
+            memoryRequirement: 300_000_000
+        )
+
         // --- Image generation (CoreML diffusion; Apple only) --------------------
         // Apple's palettized Stable Diffusion 1.5. The id matches the built-in
         // diffusion registry (diffusion_model_registry.cpp) and RCLI's `sd15`

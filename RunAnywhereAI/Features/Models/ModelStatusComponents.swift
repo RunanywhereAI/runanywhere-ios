@@ -113,6 +113,7 @@ private extension ModelSelectionContext {
         case .diarization: return "person.2.wave.2"
         case .segmentation: return "square.3.layers.3d.down.right"
         case .imageGeneration: return "photo.artframe"
+        case .ocr: return "text.viewfinder"
         }
     }
 
@@ -120,7 +121,7 @@ private extension ModelSelectionContext {
         switch self {
         case .llm, .voice, .vlm, .ragLLM: return AppColors.brand
         case .stt, .diarization: return AppColors.statusGreen
-        case .tts, .segmentation, .imageGeneration: return AppColors.primaryPurple
+        case .tts, .segmentation, .imageGeneration, .ocr: return AppColors.primaryPurple
         case .vad: return AppColors.primaryBlue
         case .ragEmbedding: return AppColors.primaryBlue
         }
@@ -141,6 +142,7 @@ private extension ModelSelectionContext {
         case .diarization: return "Identify who spoke"
         case .segmentation: return "Segment an image"
         case .imageGeneration: return "Generate an image"
+        case .ocr: return "Read the text on a page"
         }
     }
 
@@ -168,6 +170,8 @@ private extension ModelSelectionContext {
             return "Outline the objects in an image and label them class by class."
         case .imageGeneration:
             return "Describe a picture and the model paints it here, entirely on this device."
+        case .ocr:
+            return "Point it at a page and it reads the text back, with each line boxed where it found it."
         }
     }
 

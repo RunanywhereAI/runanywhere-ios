@@ -26,6 +26,7 @@ enum ModelSelectionContext {
     case diarization   // Speaker diarization - BYO ONNX Sortformer
     case segmentation  // Semantic segmentation - BYO SegFormer
     case imageGeneration  // Text-to-image - CoreML Stable Diffusion
+    case ocr           // Full-page text recognition - CoreML Nemotron-OCR on the ANE
 
     var title: String {
         switch self {
@@ -40,6 +41,7 @@ enum ModelSelectionContext {
         case .diarization: return "Choose Diarization Model"
         case .segmentation: return "Choose Segmentation Model"
         case .imageGeneration: return "Choose Image Model"
+        case .ocr: return "Choose OCR Model"
         }
     }
 
@@ -67,6 +69,8 @@ enum ModelSelectionContext {
             return [.semanticSegmentation]
         case .imageGeneration:
             return [.imageGeneration]
+        case .ocr:
+            return [.ocr]
         }
     }
 
@@ -185,7 +189,7 @@ struct ModelSelectionSheet: View {
             pick = selection.recommendedVLM
         case .ragEmbedding:
             pick = selection.recommendedEmbedding
-        case .vad, .diarization, .segmentation, .imageGeneration:
+        case .vad, .diarization, .segmentation, .imageGeneration, .ocr:
             // Single-model (or tiny) catalogs: put the smallest candidate in
             // Recommended so Get/Use is one tap — don't bury it behind
             // "Open source · 1 model".
@@ -201,7 +205,7 @@ struct ModelSelectionSheet: View {
     /// and list models with Get/Use inline.
     private var prefersFlatModelList: Bool {
         switch context {
-        case .vad, .diarization, .segmentation, .imageGeneration:
+        case .vad, .diarization, .segmentation, .imageGeneration, .ocr:
             return true
         default:
             return filteredModels.count <= 3

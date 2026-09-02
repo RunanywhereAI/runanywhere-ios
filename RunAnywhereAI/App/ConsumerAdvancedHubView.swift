@@ -81,6 +81,15 @@ struct ConsumerAdvancedHubView: View {
                         subtitle: "Split a photo into labelled regions"
                     )
                 }
+
+                NavigationLink(destination: OCRView()) {
+                    AdvancedFeatureRow(
+                        icon: "text.viewfinder",
+                        color: AppColors.primaryAccent,
+                        title: "Read Text",
+                        subtitle: "Pull the text out of a photo or a page"
+                    )
+                }
                 #endif
 
                 // Not UIKit-gated: generation takes no image input, so there is

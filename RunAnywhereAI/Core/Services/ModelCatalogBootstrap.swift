@@ -1599,6 +1599,30 @@ enum ModelCatalogBootstrap {
         logger.info("LoRA adapters skipped: no adapter matches the current catalog")
         #endif
 
+        // The first ANE TEXT-TO-SPEECH row, and NeuRT's last null primitive filled. Kokoro-82M
+        // across three Core ML graphs (duration -> decode -> gen) plus two host seams that are not
+        // expressible as ANE ops: the duration->alignment expansion and the harmonic source. Ships
+        // its own G2P lexicon, so no runtime phonemizer is needed.
+        //
+        // Requires SDK 0.20.34, not 0.20.33. The slot shipped in .33, but the engine emitted int16
+        // PCM where every other engine emits float32 under the same AUDIO_FORMAT_PCM enum -- which
+        // names a container and carries no bit depth -- so audio came out half-length and
+        // saturated with no error anywhere. Fixed in the 0.20.34 engine.
+        //
+        // `.tts` sets allowedFrameworks nil, so this row is reachable without a picker change.
+        await registerArchive(
+            id: "kokoro-82m-ane",
+            name: "Kokoro 82M (NeuRT / Neural Engine)",
+            url: "https://huggingface.co/runanywhere/Kokoro-82M_ANE/resolve/main/"
+                + "kokoro-82m_ANE.zip",
+            framework: .coreml,
+            modality: .speechSynthesis,
+            archive: .zip,
+            structure: .nestedDirectory,
+            // 145.9 MB download; the three graphs plus a 4.3 MB G2P lexicon resident.
+            memoryRequirement: 400_000_000
+        )
+
         // --- Image generation (CoreML diffusion; Apple only) --------------------
         // Apple's palettized Stable Diffusion 1.5. The id matches the built-in
         // diffusion registry (diffusion_model_registry.cpp) and RCLI's `sd15`
